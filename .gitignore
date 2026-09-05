@@ -40,3 +40,4 @@ key.json
 # release artefacts are kept even though the patterns above exclude them elsewhere
 !release/**/*.adc
 !release/**/mod/pdipfs/**
+/tmp/

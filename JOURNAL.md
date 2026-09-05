@@ -299,3 +299,34 @@ Quadranten, kein Absturz (32 FPS).
 **PS3-Upload (13:50, Freigabe von Sebastian)**: GT5 nicht aktiv; `USRDIR/EBOOT.BIN.orig` = Original hochgeladen,
 `USRDIR/EBOOT.BIN` = `release/3p/EBOOT.BIN` (9477072 B). Rück-Download bytegleich. Nächster Schritt: GT5 vom
 XMB starten → entweder Fehlercode (SELF abgelehnt) oder Menü → Split Battle mit Spieler 3.
+
+**PS3 lehnt das erste SELF ab (14:00)** → Original zurückgespielt (bytegleich verifiziert). Ursache gefunden:
+im NPDRM-Kontrollblock waren beide OMAC-Hashes falsch, weil `NP_tid`/`NP_ci` in meiner Schlüsseldatei vertauscht
+waren — der CID_FN-Hash des Originals (`6f6c156c…`) reproduziert exakt mit NP_tid = RPCS3 `NP_OMAC_KEY_3`
+über ContentID(0x30)+"EBOOT.BIN". Zweiter Unterschied: scetool ließ die FW-Version im Digest auf 0 (Original
+41000 = 4.10) → `tools/npdrm_fixup.py` setzt sie und verifiziert beide Hashes (das Original besteht die Prüfung
+unverändert). Weitere, vermutlich unkritische Abweichungen: kein SCE-Version-Block/Typ-3-Section (ELF-Section
+0x1D, 0x5352 B), leere LOAD-Segmente 3/4 nicht als Sections gelistet (`--skip-sections`). Erster
+`--skip-sections FALSE`-Bau hatte fälschlich TLS/Param-Segmente verschlüsselt.
+Neue EBOOTs (split3/split4) + Kontroll-SELF `EBOOT_plain_rebuild.BIN` (Original-ELF neu verschlüsselt) gebaut.
+
+## 2026-09-05 15:30–19:00 — PS3: SELF akzeptiert, 3 Ansichten auf Hardware, Controller 3 steuert nicht
+
+- Korrigiertes EBOOT (NP_tid/NP_ci getauscht, FW 4.10) auf die PS3 geladen → GT5 startet von der Disc
+  ohne Fehler, `verify` = 250/250 gepatchte Wörter aktiv. **Split Battle mit Spieler 3: drei Ansichten,
+  drei Autos auf echter Hardware** (Sebastian). Aber: Controller 3 (LED 3, Port 2) bewegt Auto 3 nicht,
+  auch nicht wenn alle drei Pads vor dem Start verbunden sind. Mod-Log: entry 2 port=2 ctrlport=2.
+- webMAN-Virtualpad (`/pad.ps3`) registriert sich als Port 1, wird von GT5 in-game aber ignoriert (nur
+  XMB/Dialoge?). `/xmb.ps3$screenshot` funktioniert nur im XMB (hier: nicht verfügbar). `/play.ps3`
+  startete zweimal den „Simple File Manager" statt der Disc — Fernstart von GT5 offen.
+- Heap-Adressen sind auf PS3 und RPCS3 identisch (Entries 0x4FF13550, Slots 0x4FFC8300, Entry-Liste
+  0x4FF3DBE0). Die 0xd8-Liste in der Spieler-Fabrik ist die **Teilnehmerliste** („PDI Entry0N",
+  player_no bei +0x20), nicht die Pad-Liste.
+- Pad-Pfad (RPCS3 cellPad-Trace): GT5 pollt jeden Frame `cellPadGetData` für Ports 0–3 (Schleife bis 7),
+  `SetPortSetting(port,6)` für alle; Pad-Manager = globales Objekt **0x18ef8f8**: +0x00 max=7, +0x04
+  now_connect, +0x0c connected[7], +0x28 setting[7], +0x44 capability[7], +0x7c alter Status, Daten je
+  Port ab +0xa0 (Stride 0x84: len, button[0..]). Nach GetData prüft GT5 `button[1]`: High-Nibble muss 7
+  sein, Low-Nibble (Wortzahl) 0xA/0xC-Verzweigung (RPCS3: 0x7C bei len 24). Trampolines 0xfa1070
+  (GetData) ← 0xab37f4, 0xfa1118 (GetInfo2) ← 0xab364c, 0xfa0fc8 (SetPortSetting) ← 0xab37d0.
+- `tools/ps3_padprobe.sh`: liest den Pad-Manager der Konsole (nur lesen) — im nächsten Test mit
+  gedrückten Tasten an Pad 3 laufen lassen, um zu sehen, ob dessen Daten bei GT5 ankommen.
