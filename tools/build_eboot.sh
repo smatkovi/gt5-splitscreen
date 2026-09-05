@@ -3,7 +3,7 @@
 # unsigned = "fake signed", accepted by CFW like any homebrew SELF) from the decrypted EBOOT.elf
 # and word lists.  Usage: build_eboot.sh <out.BIN> <words.txt> [...]
 set -e
-OUT="${1:?usage: build_eboot.sh <out.BIN> <words.txt>...}"; shift
+OUT="$(realpath -m "${1:?usage: build_eboot.sh <out.BIN> <words.txt>...}")"; shift
 BASE="$HOME/gt5re"; SC="$BASE/eboot/scetool"
 mkdir -p "$SC/data"; cp "$BASE/tools/scetool_keys.txt" "$SC/data/keys"
 ELF="${OUT%.BIN}.elf"
@@ -25,3 +25,4 @@ PY
 (cd "$SC" && ./scetool -0 SELF -1 TRUE -s FALSE -2 19 -3 1010000001000003 -4 01000002 -5 NPDRM -A 0001000000000000 -6 0004001000000000 \
    -b FREE -c UEXEC -f EP9001-BCES00569_00-0000000000000000 -g EBOOT.BIN -t "$BASE/update/USRDIR/EBOOT.BIN" -e "$ELF" "$OUT" 2>&1 | grep -E 'written|Error') 
 (cd "$SC" && ./scetool -d "$OUT" "$OUT.rt.elf" >/dev/null 2>&1) && cmp "$OUT.rt.elf" "$ELF" && rm -f "$OUT.rt.elf" && echo "round trip OK: $OUT"
+"$BASE/.venv/bin/python" "$BASE/tools/npdrm_fixup.py" "$OUT"
