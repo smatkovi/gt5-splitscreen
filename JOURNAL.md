@@ -402,3 +402,13 @@ nach vtable 0x16D4EE8 statt Fixadressen). Wortdiff je Objekt (idx0, idx1, idx2),
 F2 (Pad 3 ✕) → [84, 52, **173**], F7 (Pad 3 Stick rechts) → [87, 83, **247**], n (Pad 2) → [84, **132**, 62],
 x (Pad 1) → [**165**, 161, 63]. Bildvergleich bei 6 s F2: Fenster 3 (unten rechts) 59 % Pixel geändert,
 Fenster 1 0,5 % → Pad 3 fährt das Auto in Fenster 3. Belege `doc/emu_3p_pad3_*.png`.
+
+**4P-Gegentest keycfg4 + mod_kc (01:12)**: `ports: 4`, Key-Config für Port 2 und 3 gesetzt, `load_sequence finished`,
+kein Absturz. Spieler-Objekte 0x4FA82000/0x4FA6A000/0x4FA46000/0x4FA3A000 (idx0..3). Wortdiff (idx0..3),
+Kontrolle [50, 9, 50, 24]: KP_Multiply (Pad 4 ✕) → [56, 97, 61, **109**], F2 (Pad 3 ✕) → [91, 94, **145**, 69],
+KP_Divide (Pad 4) → [55, 78, 65, **156**]. Die Nebenänderungen (idx1 bei Pad 4, idx0 bei Pad 3) passen zur
+Startaufstellung: Auto 4 steht hinter Auto 2, Auto 3 hinter Auto 1 → Auffahrkollision beim Gasgeben.
+Bildvergleich Pad 4: Fenster 4 (unten rechts) 59 %, Fenster 2 71 % (gerammt), Fenster 1/3 ≈ 20 %.
+Beleg `doc/emu_4p_pad4_accel_2026-09-06.png`. Release-Ordner 3p/4p aktualisiert, Commit 178ac64.
+Nächster Schritt: PS3 — `release/3p/EBOOT.BIN` + `release/3p/mod/pdipfs/*` hochladen
+(`tools/deploy_ps3_release.sh`, erst nach Sebastians Freigabe), Hardware-Test, dann Tag 3p-v1.

@@ -4,9 +4,9 @@ RAM patch + Adhoc script mod that turns the 2-player "2P Split Screen" arcade mo
 4-player race (four viewports in quadrants, four human-controlled cars on controller ports 0-3).
 
 Status (2026-09-06): **verified in RPCS3** (0.0.42-19916, LLVM PPU, ASMJIT SPU) — four views in a
-quadrant layout, four cars, no crash through the race. Pad 3 steering its own car (3-player race) was
+quadrant layout, four cars, no crash through the race. Pads 3 and 4 steering their own cars (4-player race) was
 confirmed by memory diffs of the per-player objects and by the view following the input
-(`doc/emu_3p_pad3_accel_2026-09-06.png`, `doc/emu_3p_pad3_steer_2026-09-06.png`).
+(`doc/emu_4p_pad4_accel_2026-09-06.png`, `doc/emu_3p_pad3_steer_2026-09-06.png`).
 **PS3 hardware test of the pad-3 fix still pending**; the earlier EBOOT (without item 4 below) showed
 the views and cars on the console but controller 3 could not drive. See "Testing on the PS3".
 
