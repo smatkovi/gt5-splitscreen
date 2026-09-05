@@ -347,3 +347,9 @@ Neue EBOOTs (split3/split4) + Kontroll-SELF `EBOOT_plain_rebuild.BIN` (Original-
      die Pads tauschen (das als LED 3 verwenden, das vorher LED 1 war).
 - Fernstart der Disc: `/play.ps3` startet auf dieser Konsole den „Simple File Manager"; für GT5 vom XMB
   aus muss vorerst jemand vor Ort ✕ drücken (oder webMAN-Konfiguration prüfen: „disc icon" Zuordnung).
+
+**Spieler-Objekte im Emulator (19:00)**: drei 0x3270-Objekte an festen Adressen 0x4FA78000 / 0x4FA6C000 /
+0x4FA48000 (Spieler 0/1/2; vtable 0x16d4ee8; +0x34 = Index, +0x2c → Unterobjekt 0x4FE5D690+i·0x98,
++0x3198/+0x31a4 = Index, +0x31a8 = Renneintrag). Eingabezustand liegt nicht im Kopf (+0x00..0x40 statisch);
++0xa4 kippte bei gehaltenem Kreuz auf Pad 2 in Objekt 2 UND 0 (bei Pad 0 gar nicht) → nur Hinweis.
+`tools/ps3_padprobe.sh` liest Pad-Manager (primär) + diese Objekte.
