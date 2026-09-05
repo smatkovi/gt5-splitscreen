@@ -330,3 +330,20 @@ Neue EBOOTs (split3/split4) + Kontroll-SELF `EBOOT_plain_rebuild.BIN` (Original-
   (GetData) ← 0xab37f4, 0xfa1118 (GetInfo2) ← 0xab364c, 0xfa0fc8 (SetPortSetting) ← 0xab37d0.
 - `tools/ps3_padprobe.sh`: liest den Pad-Manager der Konsole (nur lesen) — im nächsten Test mit
   gedrückten Tasten an Pad 3 laufen lassen, um zu sehen, ob dessen Daten bei GT5 ankommen.
+
+**Stand 19:10 / nächste Schritte (Sebastian abwesend, Hardware unangetastet, PS3 im XMB)**
+- Pad-Modul (0xab2xxx–0xab3xxx) wird über Deskriptoren/vtables aufgerufen (keine `bl`-Aufrufer);
+  Init 0xab3230 legt 7 Pad-Slots (+0x468, Stride 0xe0) an. Emulator zeigt für Port 2 keine Sperre —
+  der Unterschied muss aus den Live-Daten der Konsole kommen (Gerätekennung/Status von Pad 3, Spielstand-
+  Optionen).
+- Nächster Hardware-Test (Sebastian anwesend, 3 Pads LED 1–3, ins 3P-Rennen):
+  1. `PS3=192.168.1.11 ~/gt5re/tools/ps3_padprobe.sh 8` laufen lassen, dabei an Pad 3 Gas/Tasten halten
+     → zeigt connected/setting/capability je Port und len/button[1]/digital je Port. Erwartung für ein
+     echtes DS3 mit Setting 6: len=24, button[1]=7C. Abweichung bei Port 2 = Ursache gefunden.
+  2. Wenn Pad 3 korrekt ankommt: Pad-Zuordnung pro Fahrer im Spieler-Objekt (0x3270-Objekt aus 0x170a38)
+     untersuchen — dort den Port-Index lesen (Emulator: Objekt finden, Offset des `ctrlport` bestimmen,
+     dann auf der PS3 vergleichen).
+  3. Frage an Sebastian: ist Controller 3 ein originaler DualShock 3 (nicht Sixaxis/Nachbau)? Testweise
+     die Pads tauschen (das als LED 3 verwenden, das vorher LED 1 war).
+- Fernstart der Disc: `/play.ps3` startet auf dieser Konsole den „Simple File Manager"; für GT5 vom XMB
+  aus muss vorerst jemand vor Ort ✕ drücken (oder webMAN-Konfiguration prüfen: „disc icon" Zuordnung).
