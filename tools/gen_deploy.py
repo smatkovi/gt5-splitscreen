@@ -38,8 +38,10 @@ script = f'''#!/bin/bash
 PID=$(curl -s --max-time 10 "http://$PS3/home.ps3mapi" | grep -oiE 'proc=0x[0-9a-f]+' | head -1 | cut -d= -f2)
 [ -n "$PID" ] || {{ echo "no game process found"; exit 1; }}
 echo "pid=$PID"
-poke() {{ curl -s --max-time 20 "http://$PS3/setmem.ps3mapi?proc=$PID&addr=$1&val=$2" >/dev/null; }}
-rd()   {{ curl -s --max-time 20 "http://$PS3/getmem.ps3mapi?proc=$PID&addr=$1&len=4" | grep -oiE '\\b[0-9A-F]{{2}} [0-9A-F]{{2}} [0-9A-F]{{2}} [0-9A-F]{{2}}\\b' | head -1 | tr -d ' '; }}
+# webMAN's web server is single-threaded and answers with empty/503 replies under load:
+# every read is retried until it returns 4 bytes, every poke is read back and retried.
+rd()   {{ local v i; for i in 1 2 3 4 5; do v=$(curl -s --max-time 20 "http://$PS3/getmem.ps3mapi?proc=$PID&addr=$1&len=4" | grep -oiE '\\b[0-9A-F]{{2}} [0-9A-F]{{2}} [0-9A-F]{{2}} [0-9A-F]{{2}}\\b' | head -1 | tr -d ' '); [ -n "$v" ] && {{ echo "${{v^^}}"; return 0; }}; sleep 1; done; echo ""; }}
+poke() {{ local i; for i in 1 2 3; do curl -s --max-time 20 "http://$PS3/setmem.ps3mapi?proc=$PID&addr=$1&val=$2" >/dev/null; [ "$(rd "$1")" = "$2" ] && return 0; sleep 1; done; echo "  poke FAILED: $1 <- $2 (reads $(rd "$1"))"; return 1; }}
 CAVES='
 {table(caves)}
 '
@@ -60,7 +62,7 @@ case "$MODE" in
     bad=0; on=0; off=0
     while read -r a o n; do
         [ -z "$a" ] && continue
-        v=$(rd "$a"); v=${{v^^}}
+        v=$(rd "$a")
         if [ "$v" = "$n" ]; then on=$((on+1)); elif [ "$v" = "$o" ]; then off=$((off+1)); else bad=$((bad+1)); echo "  $a = $v (neither $o nor $n)"; fi
     done <<< "$CAVES
 $CODE"

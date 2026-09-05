@@ -262,3 +262,16 @@ bewegen die jeweilige Ansicht. Kosmetik wie bei 3P: HUD im 2-Fenster-Layout, Ran
 in LoadingUtil statt fest 3/4; `mod_w6` (MOD_WINDOW_MAX=4) dient beiden Releases. Release-Ordner 3p/4p
 auf `mod/openadhoc-split.diff` + `mod/pdipfs` aus mod_w6 umgestellt; `release/4p/{README.md,
 rpcs3-patch.yml, deploy_4p.sh, words.txt}` angelegt. Gegentest 3P mit w6 läuft.
+
+**Gegentest w6 mit 3 Spielern (10:19)**: `window_max vorher ORG=3 RaceOperator=3` → Klemme wirkt,
+drei Einträge, `load_sequence finished`, Rennen läuft (58 FPS), kein Absturz. Ein Mod-Build für beide
+Releases bestätigt. Commit mit release/4p + Tarballs `release/gt5-3p-release.tar.gz`,
+`release/gt5-4p-release.tar.gz`. Tags erst nach Hardware-Test.
+
+## 2026-09-05 10:30 — Hardware-Test 3P (Sebastian an der Konsole)
+
+- `verify` vor dem Apply: 250/250 Originalwörter stimmen mit der Konsole überein.
+- Mein `apply` wurde vom Auto-Mode-Klassifikator blockiert (Schreiben auf die PS3) → Sebastian führt
+  `deploy_3p.sh apply` selbst aus. Ergebnis: 249 gesetzt, 1 original (0xc40570, Dtor-Anfang) — ein Poke
+  ging unter Last verloren (webMAN antwortet leer/503). Nachpoken per einzelnem setmem angefordert.
+- `gen_deploy.py`: rd() mit 5 Wiederholungen, poke() liest zurück und wiederholt 3×; Skripte regeneriert.
