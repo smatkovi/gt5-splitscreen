@@ -11,8 +11,10 @@ quadrant layout, four cars, all four pads steer their car, ~47 FPS, no crash thr
 
 | file | purpose |
 |------|---------|
+| `EBOOT.BIN` | **patched, re-encrypted 2.17 update EBOOT** (NPDRM UEXEC, key revision 0x19, licence FREE, unsigned) — the PS3 deliverable |
+| `EBOOT_patched.elf` | the decrypted patched ELF the EBOOT was built from (`tools/build_eboot.sh`), `SHA1SUMS` |
 | `rpcs3-patch.yml` | RPCS3 patch groups (`~/.config/rpcs3/patches/patch.yml`), key `PPU-223cc85f…` |
-| `deploy_4p.sh` | PS3 script (webMAN PS3MAPI pokes): `PS3=<ip> ./deploy_4p.sh apply\|off\|verify` |
+| `deploy_4p.sh` | PS3 RAM-poke script (`apply\|off\|verify`) — **only useful for `verify`**, see below |
 | `words.txt` | every patched word: address, original, new, capstone disassembly of both |
 | `mod/openadhoc-split.diff` | Adhoc script changes against the OpenAdhoc GT5 sources (arcade + race projects) |
 | `mod/arcade.adc`, `mod/race.adc` | compiled scripts |
@@ -61,18 +63,26 @@ Evidence: `doc/emu_4p_race_2026-09-05.png`.
 The RPCS3 crash logs (`Access violation`) plus host-gdb guest backtraces (`tools/ppubt.py`) were
 what located both structures; see `JOURNAL.md` for the full trail.
 
+## Why the PS3 needs the patched EBOOT (and not RAM pokes)
+
+Both external arrays are created in the **MOrganizer constructor**, and the script bootstrap
+creates that object at game start (`bootstrap_phase2.ad: main::ORG = gtengine::MOrganizer()`).
+Poking the words into a running game therefore leaves the arrays uninitialised: the first race
+after a warm `apply` hung on the console (attract-mode demo, 2026-09-05). The patch has to be in
+the code before boot, i.e. in the EBOOT. `deploy_4p.sh verify` is still handy to confirm that a
+running game carries the patched words (`patched=250`).
+
 ## Testing on the PS3
 
-Code pokes only take effect when set **cold** in the main menu (instruction cache), so:
-
-1. Install the script mod once: upload `mod/pdipfs/*` into `/dev_hdd0/game/BCES00569/USRDIR/PDIPFS/`
-   (same paths), e.g. with `deploy_mod.sh`-style FTP uploads. The console already carries an
-   equivalent build (`mod_mem`).
-2. Start GT5 from cold, stay in the main menu.
-3. `PS3=192.168.1.11 ./deploy_4p.sh apply` — it pokes the caves first, the hooks last, then runs
-   `verify` (expect `patched=250 original=0 unexpected=0`).
-4. Arcade → 2P Split Screen → track → cars for players 1 and 2 → options → answer "Spieler 3
-   (Controller 3) faehrt mit?" with **Yes**, "Spieler 4" with **Yes** → race.
-5. Expected: four views (quadrants), four cars, controllers 3 and 4 drive cars 3 and 4.
-6. Back out with `./deploy_4p.sh off` or restart the game. `./deploy_4p.sh verify` reports the
-   patched/original word counts at any time.
+1. Back up `/dev_hdd0/game/BCES00569/USRDIR/EBOOT.BIN` (the original 2.17 update EBOOT,
+   9505120 bytes, sha1 of its decrypted form `306f86c6…0452`).
+2. Upload this folder's `EBOOT.BIN` to `/dev_hdd0/game/BCES00569/USRDIR/EBOOT.BIN` (FTP).
+   The script mod (`mod/pdipfs/*`) must be in `USRDIR/PDIPFS/` as before.
+3. Start GT5 from the XMB. If the console refuses the SELF (error 80010007) the SELF type/key
+   revision is not accepted by this firmware — report the error code.
+4. (Optional) `PS3={ip} ./deploy_4p.sh verify` → expect `patched=250 original=0 unexpected=0`.
+5. Arcade → 2P Split Screen → track → cars → options → "Spieler 3 (Controller 3) faehrt mit?"
+   **Yes**, "Spieler 4" **Yes** → race. Do not idle in the main menu (the attract demo also
+   exercises the race code).
+6. Expected: four views (quadrants), four cars, controllers 3 and 4 drive cars 3 and 4.
+7. Back out by restoring the backed-up EBOOT.BIN.

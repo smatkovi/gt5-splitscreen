@@ -275,3 +275,21 @@ Releases bestätigt. Commit mit release/4p + Tarballs `release/gt5-3p-release.ta
   `deploy_3p.sh apply` selbst aus. Ergebnis: 249 gesetzt, 1 original (0xc40570, Dtor-Anfang) — ein Poke
   ging unter Last verloren (webMAN antwortet leer/503). Nachpoken per einzelnem setmem angefordert.
 - `gen_deploy.py`: rd() mit 5 Wiederholungen, poke() liest zurück und wiederholt 3×; Skripte regeneriert.
+
+**Hardware-Befund (10:45–11:00)**: nach `apply` (warm, im Hauptmenü) startete die Attract-Demo; ihr Rennen lud
+vollständig (`load_sequence finished`, window_max=2) und hing dann im Rennen. Ursache: der MOrganizer entsteht
+beim Spielstart (`bootstrap_phase2.ad: main::ORG = gtengine::MOrganizer()`), die Ctor-Caves laufen bei Warm-Pokes
+nie → externe Arrays uninitialisiert → umgeschriebene Zugriffe lesen Müll. **RAM-Pokes können diesen Patch
+prinzipiell nicht tragen; er muss ins EBOOT.**
+
+**Gepatchtes EBOOT (13:30)**: scetool (Sebastians Build) mit `data/keys` aus RPCS3s key_vault (NPDRM-Satz
+Revision 0x19, NP_tid/NP_ci/NP_klic_*), Template = Original-EBOOT, `-5 NPDRM -c UEXEC -b FREE -2 19`, ohne
+`priv` (unsigniert → CFW-„fake sign"; leeres `priv=` ließ scetool mit NULL-Kurven abstürzen). Rückweg
+(`scetool -d`) ist bytegleich mit dem gepatchten ELF. Header wie Original (0x19 / App-Type 0x21 / Lizenz 3).
+`tools/build_eboot.sh` reproduziert das. RPCS3 lädt das SELF (PPU-Hash ef2fe6c2…), Wörter im Speicher aktiv.
+Release-Ordner enthalten jetzt `EBOOT.BIN`, `EBOOT_patched.elf`, `SHA1SUMS`; READMEs erklären den Weg.
+
+**Emulator mit gepatchtem EBOOT.BIN (13:30, keine Patchgruppen)**: 3P-Rennen lädt (`load_sequence
+finished`, 3 Einträge), läuft mit 58 FPS, kein Absturz → das re-verschlüsselte SELF trägt den Patch vollständig.
+Konsolen-EBOOT vorab gesichert (`eboot/EBOOT_console_backup.BIN` == Original 2.17). Warte auf Sebastians
+Freigabe für den FTP-Upload.
