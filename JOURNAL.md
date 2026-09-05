@@ -243,3 +243,22 @@ startet ebenfalls (`load_sequence finished`, kein Absturz). Der Load-Fix cave4 i
 der Slot-2-Reset war eine Folgeerscheinung des Speicherschadens durch den fehlenden dritten Spieler-Eintrag.
 Release 3P deshalb ohne cave4 (adressabhängig); `cave4b_words.txt` bleibt als Reserve.
 - `nav.sh`: Zustand `badshot` (Fenster verschoben/teilverdeckt) → Fenster nach 0,0 holen.
+
+## 2026-09-05 10:05 — 4P-Zweig
+
+- Commit `0a7259d` (3P-Stand, kein Tag bis Hardware-Test), `release/gt5-3p-release.tar.gz`.
+- `mod_4p` = build_mod.sh mit MOD_WINDOW_MAX=4 (RaceRoot: window_max auf 4 geklemmt), Overlay deployt.
+- Patchgruppe „GT5 4P: viewport count 4" (0x379c30/0x37b250 → +4); aktiv: entries×4, slots×4, viewport4.
+- Test: nav.sh 4 (Spieler 3 = ja, Spieler 4 = ja).
+
+**4P-Rennen läuft im Emulator (10:11)** — Patches entries×4 + slots×4 + viewport4, Mod MOD_WINDOW_MAX=4,
+Dialoge Spieler 3 = ja, Spieler 4 = ja. Mod-Log: vier Einträge (Ports 0–3, eigene Fahrerobjekte),
+`load_sequence finished`, kein Absturz. Vier Ansichten in Quadranten (1 oben links, 2 oben rechts,
+3 unten links, 4 unten rechts), Position 1/4, ~47 FPS; Tasten aller vier Pads (X, N, F2, KP_Multiply)
+bewegen die jeweilige Ansicht. Kosmetik wie bei 3P: HUD im 2-Fenster-Layout, Rangliste/Zeiten liegen
+über Ansicht 2. Beleg `doc/emu_4p_race_2026-09-05.png`.
+
+**Mod w6 (10:15)**: `patch_race_log_w6.py` — `ORG.window_max = min(RaceOperator.window_max, MOD_WINDOW_MAX)`
+in LoadingUtil statt fest 3/4; `mod_w6` (MOD_WINDOW_MAX=4) dient beiden Releases. Release-Ordner 3p/4p
+auf `mod/openadhoc-split.diff` + `mod/pdipfs` aus mod_w6 umgestellt; `release/4p/{README.md,
+rpcs3-patch.yml, deploy_4p.sh, words.txt}` angelegt. Gegentest 3P mit w6 läuft.

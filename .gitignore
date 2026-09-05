@@ -26,8 +26,6 @@
 /logs_disc/
 /.venv/
 /release/*.tar.gz
-/release/3p/mod/pdipfs/
-/release/4p/mod/pdipfs/
 *.log
 full.txt
 strings.txt
@@ -38,3 +36,7 @@ gt5dump_*.txt
 *_kaputt.bin
 K4D_original.bin
 key.json
+
+# release artefacts are kept even though the patterns above exclude them elsewhere
+!release/**/*.adc
+!release/**/mod/pdipfs/**

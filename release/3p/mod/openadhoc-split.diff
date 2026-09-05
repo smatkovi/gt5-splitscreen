@@ -182,7 +182,7 @@ index 5fafd72..995e006 100644
  
          if (!result)
 diff --git a/src/projects/gt5/race/LoadingUtil.ad b/src/projects/gt5/race/LoadingUtil.ad
-index d5177ae..98f88ba 100644
+index d5177ae..544db9c 100644
 --- a/src/projects/gt5/race/LoadingUtil.ad
 +++ b/src/projects/gt5/race/LoadingUtil.ad
 @@ -19,6 +19,9 @@ module LoadingUtil
@@ -190,7 +190,7 @@ index d5177ae..98f88ba 100644
      {
          var usec_start = pdistd::GetSystemTimeMicroSecond();
 +        log4p("LU: load_sequence start");
-+        log4p("LU: window_max vorher ORG=" + ORG.window_max.toString() + " RaceOperator=" + RaceOperator.window_max.toString()); ORG.window_max = 3; log4p("LU: window_max jetzt ORG=" + ORG.window_max.toString());
++        log4p("LU: window_max vorher ORG=" + ORG.window_max.toString() + " RaceOperator=" + RaceOperator.window_max.toString()); ORG.window_max = (RaceOperator.window_max > 4) ? 4 : RaceOperator.window_max; log4p("LU: window_max jetzt ORG=" + ORG.window_max.toString());
 +        { var mp4p = [RaceOperator.getMemoryAssign_Standard(), RaceOperator.getMemoryAssign_WithGhost(), RaceOperator.getMemoryAssign_FewCars(), RaceOperator.getMemoryAssign_ExpandMemory(), RaceOperator.getMemoryAssign_WithoutReplay(), RaceOperator.getMemoryAssign_ForReplay()]; var mn4p = ["Standard", "WithGhost", "FewCars", "ExpandMemory", "WithoutReplay", "ForReplay"]; var ml4p = "LU: memprofiles"; for (var k4p = 0; k4p < mp4p.size; k4p++) { ml4p = ml4p + " " + mn4p[k4p] + "=" + mp4p[k4p].nb_vehicle.toString(); if (mp4p[k4p].nb_vehicle < 4) { mp4p[k4p].nb_vehicle = 4; ml4p = ml4p + "->4"; } } log4p(ml4p); }
  
          var current_progress = 0.0;
@@ -289,7 +289,7 @@ index d5177ae..98f88ba 100644
  
          if (progress != nil)
 diff --git a/src/projects/gt5/race/RaceRoot.ad b/src/projects/gt5/race/RaceRoot.ad
-index 9fff4c7..f9cbe89 100644
+index 9fff4c7..eb9d6c3 100644
 --- a/src/projects/gt5/race/RaceRoot.ad
 +++ b/src/projects/gt5/race/RaceRoot.ad
 @@ -171,6 +171,29 @@ module ROOT
@@ -330,7 +330,7 @@ index 9fff4c7..f9cbe89 100644
 +        // --- 4P split patch: window clamp, raised for the 3-window experiment.
 +        // RaceOperator.window_max keeps the real player count (needed for car loading),
 +        // the engine side is clamped to 2 here.
-+        main::ORG.window_max = (main::RaceOperator.window_max > 3) ? 3 : main::RaceOperator.window_max;
++        main::ORG.window_max = (main::RaceOperator.window_max > 4) ? 4 : main::RaceOperator.window_max;
 +        log4p("RR.onInitialize: RaceOperator.window_max=" + main::RaceOperator.window_max.toString()
 +              + " ORG.window_max=" + main::ORG.window_max.toString()
 +              + " racers_num=" + ORG.racers_num.toString());

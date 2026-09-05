@@ -4,7 +4,7 @@
 #   Usage: build_mod.sh <mod-dir-name>        e.g. build_mod.sh mod_x   -> ~/gt5re/mod_x, mod_x-pack, mod_x-pdipfs
 # Steps: git clone OpenAdhoc (HEAD is the untouched reference; the working tree is NOT used),
 #        patch_arcade_v3.py (split battle with players 3/4, own MCarDriverParameter per entry),
-#        patch_race_log_w4.py with MOD_WINDOW_MAX (default 3),
+#        patch_race_log_w6.py with MOD_WINDOW_MAX (default 3),
 #        cp.checkValid() in CarRoot/CarSplitRoot (GT5 2.17 API), adhoc build, GTToolsSharp pack.
 set -e
 BASE="$HOME/gt5re"
@@ -21,7 +21,7 @@ git clone -q "$BASE/OpenAdhoc" "$MOD"
 (cd "$MOD" && find . -name '*.Ad' -exec bash -c 'mv "$1" "${1%.Ad}.ad"' _ {} \;)
 SRC="$MOD/src/projects/gt5"
 python3 "$BASE/patch_arcade_v3.py" "$SRC/arcade/arcade.ad"
-python3 "$BASE/patch_race_log_w4.py" "$SRC/race"
+python3 "$BASE/patch_race_log_w6.py" "$SRC/race"
 python3 - "$SRC" <<'PYEOF'
 import sys, pathlib
 src = pathlib.Path(sys.argv[1])
