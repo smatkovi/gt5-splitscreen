@@ -1,0 +1,370 @@
+diff --git a/src/projects/gt5/arcade/CarRoot.ad b/src/projects/gt5/arcade/CarRoot.ad
+index 8d27dc7..dab7e03 100644
+--- a/src/projects/gt5/arcade/CarRoot.ad
++++ b/src/projects/gt5/arcade/CarRoot.ad
+@@ -797,6 +797,8 @@ module CarRoot
+                     {
+                         var cp = car.getCP();
+ 
++                        cp.checkValid(); // added in GT5 2.17
++
+                         if (course_is_dirt)
+                         {
+                             if (cp.isHavingParts(gtengine::CarPartsType::FRONT_TIRE, gtengine::PARTS_TIRE::DIRT_A) ||
+diff --git a/src/projects/gt5/arcade/CarSplitRoot.ad b/src/projects/gt5/arcade/CarSplitRoot.ad
+index b2a7024..fba335c 100644
+--- a/src/projects/gt5/arcade/CarSplitRoot.ad
++++ b/src/projects/gt5/arcade/CarSplitRoot.ad
+@@ -668,6 +668,8 @@ module CarSplitRoot
+                     if (tab_id == TAB_TYPE::FAVORITE)
+                     {
+                         var cp = car.getCP();
++                        cp.checkValid(); // added in GT5 2.17
++
+ 
+                         if (course_is_dirt)
+                         {
+diff --git a/src/projects/gt5/arcade/arcade.ad b/src/projects/gt5/arcade/arcade.ad
+index 5fafd72..995e006 100644
+--- a/src/projects/gt5/arcade/arcade.ad
++++ b/src/projects/gt5/arcade/arcade.ad
+@@ -1037,21 +1037,120 @@ module PROJECT
+         return gp;
+     }
+ 
++    // --- 4P split patch: how many players take part in this split battle (2..4).
++    // The menu layer only knows pads 1 and 2, so player 1 answers two yes/no dialogs
++    // when starting the race; players 3 and 4 are bound to pads 3 and 4 in the race itself.
++    static mod_log_buf = "";
++    function modlog(text)
++    {
++        mod_log_buf = mod_log_buf + text + "\n";
++        pdistd::WriteFile("/APP_DATA_RAW/4pmod.log", mod_log_buf.getByteData());
++    }
++
++    function getSplitPlayerPorts(context)
++    {
++        var ports = [0, 1];
++        modlog("getSplitPlayerPorts: start");
++        var r3 = DialogUtil::openConfirmDialog(context, DialogUtil::YESNO, "Spieler 3 (Controller 3) faehrt mit?");
++        modlog("dialog P3 -> " + (r3 ? "yes" : "no"));
++        if (r3)
++        {
++            ports.push(2);
++            var r4 = DialogUtil::openConfirmDialog(context, DialogUtil::YESNO, "Spieler 4 (Controller 4) faehrt mit?");
++            modlog("dialog P4 -> " + (r4 ? "yes" : "no"));
++            if (r4)
++                ports.push(3);
++        }
++        modlog("ports: " + ports.size.toString());
++        return ports;
++    }
++
++    // --- 4P split patch: a car model nobody else in this race uses
++    static SPARE_CAR_LABELS = ["gtr_07", "impreza_wrx_sti_07", "rx7_spirit_r_typea_02",
++                               "s2000_99", "civic_type_r_97", "supra_rz_97", "silvia_spec_r_02"];
++    function pickSpareCarCode(used_cp_list)
++    {
++        foreach (var label in SPARE_CAR_LABELS)
++        {
++            var code = gtengine::MSpecDB::getCarCode(label);
++            if (code == gtengine::MSpecDB::NO_CODE64)
++                continue;
++
++            var taken = false;
++            foreach (var used in used_cp_list)
++            {
++                if (used.getCarCode() == code)
++                    taken = true;
++            }
++            if (!taken)
++            {
++                modlog("spare car: " + label);
++                return code;
++            }
++        }
++        modlog("spare car: none found");
++        return gtengine::MSpecDB::NO_CODE64;
++    }
++
+     function createSplitBattle(context, course_code, course_data_holder)
+     {
+-        var cp0 = GAME_STATUS.user_profile.context.getArcadeCar(0);
+-        var dp0 = GAME_STATUS.user_profile.residence.getArcadePlayer(0);
++        var ports = getSplitPlayerPorts(context);
+ 
+-        var cp1 = GAME_STATUS.user_profile.context.getArcadeCar(1);
+-        var dp1 = GAME_STATUS.user_profile.residence.getArcadePlayer(1);
++        var cp_list = [];
++        var dp_list = [];
+ 
+-        dp0.display_name = dp0.display_name + "[1]";
++        var i = 0;
++        foreach (var port in ports)
++        {
++            var cp;
++            var dp;
++            if (i < 2)
++            {
++                // players 1 and 2: car and driver chosen in the split car select, as before
++                cp = GAME_STATUS.user_profile.context.getArcadeCar(i);
++                dp = GAME_STATUS.user_profile.residence.getArcadePlayer(i);
++            }
++            else
++            {
++                // Players 3 and 4 need a car model of their own: the engine loads one
++                // resource per distinct car code, so a copy of an already entered car
++                // would never make the "all cars loaded" check pass.
++                var code = pickSpareCarCode(cp_list);
++                if (code != gtengine::MSpecDB::NO_CODE64)
++                {
++                    cp = gtengine::MCarParameter(code);
++                    cp.rentacar = true;
++                    cp.ownArcadePartsAll();
++                }
++                else
++                {
++                    var src_cp = GAME_STATUS.user_profile.context.getArcadeCar(i - 2);
++                    cp = gtengine::MCarParameter();
++                    cp.deepCopy(src_cp);
++                }
++                // Eigenes Fahrer-Objekt: createSplitBattle weist driver_parameter
++                // per Referenz zu, ein geteiltes Objekt haengt sonst zwei Entries
++                // an denselben Fahrer (und setPlayer wuerde Spieler 1 umbiegen).
++                var src_dp = GAME_STATUS.user_profile.residence.getArcadePlayer(i - 2);
++                dp = gtengine::MCarDriverParameter();
++                dp.deepCopy(src_dp);
++                dp.setPlayer(port);
++            }
++            dp.display_name = dp.display_name + "[%d]".format(i + 1);
++            modlog("entry " + i.toString() + ": port=" + port.toString() + " name=" + dp.display_name
++               + " ctrlport=" + dp.getControllerPort().toString()
++               + " dpvacant=" + (dp.isVacant() ? "1" : "0")
++               + " code=" + cp.getCarCode().toString());
++            cp_list.push(cp);
++            dp_list.push(dp);
++            i++;
++        }
+ 
+         var gp;
+         if (course_data_holder.is_edit_course_)
+         {
+             var course_pathway = course_data_holder.course_pathway_;
+-            gp = GameParameterUtil::createSplitBattle(course_code, [cp0, cp1], [dp0, dp1]);
++            gp = GameParameterUtil::createSplitBattle(course_code, cp_list, dp_list);
+ 
+             {
+                 var course_pathway_bin;
+@@ -1067,7 +1166,7 @@ module PROJECT
+         }
+         else
+         {
+-            gp = GameParameterUtil::createSplitBattle(course_code, [cp0, cp1], [dp0, dp1]);
++            gp = GameParameterUtil::createSplitBattle(course_code, cp_list, dp_list);
+         }
+ 
+         gp.event.race_parameter.low_mu_type = GAME_STATUS.user_profile.context.arcade_low_mu_type;
+@@ -1241,6 +1340,16 @@ module PROJECT
+ 
+         var result = GameParameterUtil::executeArcade(context, gp, GAME_STATUS, driving_option);
+ 
++        // --- 4P split patch (phase 1): the engine's window manager has two hard-wired
++        // windows; keep window_max at 2 even when 3 or 4 human players are entered.
++        if (game_mode == gtengine::GameMode::SPLIT_BATTLE)
++        {
++            modlog("after executeArcade: result=" + (result ? "true" : "false") + " RaceOperator.window_max=" + main::RaceOperator.window_max.toString() + " ORG.window_max=" + main::ORG.window_max.toString());
++            // NOTE: no clamp here on purpose - RaceOperator.window_max must stay at the
++            // real player count so the engine loads every player car. The engine-side
++            // window manager is clamped later, in RaceRoot.onInitialize (race project).
++        }
++
+         GameParameterUtil::end();
+ 
+         if (!result)
+diff --git a/src/projects/gt5/race/LoadingUtil.ad b/src/projects/gt5/race/LoadingUtil.ad
+index d5177ae..98f88ba 100644
+--- a/src/projects/gt5/race/LoadingUtil.ad
++++ b/src/projects/gt5/race/LoadingUtil.ad
+@@ -19,6 +19,9 @@ module LoadingUtil
+     function load_sequence(context, after_coursein_func)
+     {
+         var usec_start = pdistd::GetSystemTimeMicroSecond();
++        log4p("LU: load_sequence start");
++        log4p("LU: window_max vorher ORG=" + ORG.window_max.toString() + " RaceOperator=" + RaceOperator.window_max.toString()); ORG.window_max = 3; log4p("LU: window_max jetzt ORG=" + ORG.window_max.toString());
++        { var mp4p = [RaceOperator.getMemoryAssign_Standard(), RaceOperator.getMemoryAssign_WithGhost(), RaceOperator.getMemoryAssign_FewCars(), RaceOperator.getMemoryAssign_ExpandMemory(), RaceOperator.getMemoryAssign_WithoutReplay(), RaceOperator.getMemoryAssign_ForReplay()]; var mn4p = ["Standard", "WithGhost", "FewCars", "ExpandMemory", "WithoutReplay", "ForReplay"]; var ml4p = "LU: memprofiles"; for (var k4p = 0; k4p < mp4p.size; k4p++) { ml4p = ml4p + " " + mn4p[k4p] + "=" + mp4p[k4p].nb_vehicle.toString(); if (mp4p[k4p].nb_vehicle < 4) { mp4p[k4p].nb_vehicle = 4; ml4p = ml4p + "->4"; } } log4p(ml4p); }
+ 
+         var current_progress = 0.0;
+         var loading_car_num;
+@@ -65,9 +68,11 @@ module LoadingUtil
+             ORG.requestLoadingCourse();
+ 
+         var check_in_success = RaceOperator.checkIn(false);
++        log4p("LU: checkIn -> " + (check_in_success ? "ok" : "FAIL"));
+         if (!check_in_success)
+             return false;
+ 
++        log4p("LU: entryDone loop enter");
+         while (true)
+         {
+             var res = RaceOperator.hasEntryDone();
+@@ -86,13 +91,19 @@ module LoadingUtil
+             progress.value = current_progress;
+         }
+ 
++        log4p("LU: entryDone loop passed");
+         RaceOperator.processAfterCheckIn();
++        log4p("LU: processAfterCheckIn done");
+ 
+         if (loading_course_priority == false)
+         {
++            { var es4p = RaceOperator.game_parameter.event.entry_set.entries; var s4p = "LU: entries=" + es4p.size.toString(); for (var i4p = 0; i4p < es4p.size; i4p++) s4p = s4p + " [" + i4p.toString() + "] player_no=" + es4p[i4p].player_no.toString() + " vacant=" + (es4p[i4p].car_parameter.isVacant() ? "1" : "0") + " code=" + es4p[i4p].car_parameter.getCarCode().toString(); log4p(s4p); }
++            var lu_dbg = 0;
++            log4p("LU: carload loop enter, need=" + loading_car_num.toString());
+             while (!ORG.hasLoadingCarDone())
+             {
+                 var loaded_num = ORG.getLoadedCarCount();
++                if (lu_dbg == 0 || lu_dbg == 10 || lu_dbg == 30 || lu_dbg == 60 || lu_dbg == 120) log4p("LU: carload t=" + lu_dbg.toString() + " loaded=" + loaded_num.toString() + " racersMax=" + ORG.getCurrentRaceParameter().racers_max.toString() + " winmax=" + ORG.window_max.toString()); lu_dbg++;
+                 if (progress != nil)
+                     progress.value = current_progress + (time_each_car_ratio * loaded_num);
+             
+@@ -106,8 +117,10 @@ module LoadingUtil
+             }
+ 
+             ORG.requestLoadingCourse();
++            log4p("LU: carload loop passed, course requested");
+             pdistd::DelayThread(0x3E8 * 0x64);
+ 
++            log4p("LU: canEnterCourse loop enter");
+             while (!ORG.canEnterCourse())
+             {
+                 if (progress != nil)
+@@ -123,6 +136,7 @@ module LoadingUtil
+         
+             if (progress != nil)
+             {
++                log4p("LU: canEnterCourse loop passed");
+                 current_progress += time_course_ratio;
+                 progress.value = current_progress;
+             }
+@@ -189,10 +203,13 @@ module LoadingUtil
+ 
+         if (loading_course_priority == false || RaceOperator.isOnline() == true)
+         {
++            log4p("LU: enterCourse loop enter");
+             while (ORG.enterCourse() == false)
+                 ;
+ 
++            log4p("LU: enterCourse done, waiting inCourse");
+             busy_wait(context, ORG.inCourse, 1000 * 100);    
++            log4p("LU: inCourse ok; allEntries=" + (ORG.inCourseAllEntries() ? "1" : "0"));
+         }
+ 
+         if (RaceOperator.isOnline())
+@@ -204,13 +221,19 @@ module LoadingUtil
+ 
+         if (after_coursein_func != nil && loading_course_priority == false)
+         {
++            log4p("LU: calling after_coursein_func");
+             after_coursein_func(context);
++            log4p("LU: after_coursein_func returned, waiting inSession");
+             busy_wait(context, ORG.inSession, 1000 * 100);
++            log4p("LU: inSession ok");
+ 
+             if (loading_course_priority == false)
+             {
++                log4p("LU: waiting isRenderReady");
+                 busy_wait(context, ORG.isRenderReady, 1000 * 100);
++                log4p("LU: renderReady ok, waiting isFinishedFirstLoad");
+                 busy_wait(context, ORG.isFinishedFirstLoad, 1000 * 100);
++                log4p("LU: firstLoad ok");
+             }
+ 
+             if (!gSequenceCondition.is_logger_mode)
+@@ -226,6 +249,7 @@ module LoadingUtil
+             }
+ 
+             PROJECT::setEnemySuitableTire(context);
++            log4p("LU: load_sequence finished");
+         }
+ 
+         if (progress != nil)
+diff --git a/src/projects/gt5/race/RaceRoot.ad b/src/projects/gt5/race/RaceRoot.ad
+index 9fff4c7..f9cbe89 100644
+--- a/src/projects/gt5/race/RaceRoot.ad
++++ b/src/projects/gt5/race/RaceRoot.ad
+@@ -171,6 +171,29 @@ module ROOT
+         }
+     }
+ 
++    // --- 4P split patch: poll the race start conditions for 30 s
++    method log4p_poll(context)
++    {
++        for (var n = 0; n < 30; n++)
++        {
++            Thread::Sleep(1.0);
++            var line = "RR poll t=" + n.toString()
++                + " inCourse=" + (ORG.inCourse() ? "1" : "0")
++                + " inSession=" + (ORG.inSession() ? "1" : "0")
++                + " renderReady=" + (ORG.isRenderReady() ? "1" : "0")
++                + " firstLoad=" + (ORG.isFinishedFirstLoad() ? "1" : "0")
++                + " carsDone=" + (ORG.hasLoadingCarDone() ? "1" : "0")
++                + " allEntries=" + (ORG.inCourseAllEntries() ? "1" : "0")
++                + " loadedCars=" + ORG.getLoadedCarCount().toString()
++                + " slots:";
++            for (var i = 0; i < 4; i++)
++                line = line + " " + (ORG.checkInCourseSlot(i) ? "1" : "0");
++            log4p(line);
++            if (ORG.inSession() && ORG.inCourseAllEntries())
++                break;
++        }
++    }
++
+     method onInitialize(context)
+     {
+         ORG.setEventCallback(context, ROOT);
+@@ -199,7 +222,13 @@ module ROOT
+         ORG.pauseHandleAvailable = false;
+         ORG.pauseAvailable = false;
+         checkWetInfoVisibleCondition();
+-        main::ORG.window_max = main::RaceOperator.window_max;
++        // --- 4P split patch: window clamp, raised for the 3-window experiment.
++        // RaceOperator.window_max keeps the real player count (needed for car loading),
++        // the engine side is clamped to 2 here.
++        main::ORG.window_max = (main::RaceOperator.window_max > 3) ? 3 : main::RaceOperator.window_max;
++        log4p("RR.onInitialize: RaceOperator.window_max=" + main::RaceOperator.window_max.toString()
++              + " ORG.window_max=" + main::ORG.window_max.toString()
++              + " racers_num=" + ORG.racers_num.toString());
+ 
+         sAlreadyQuited = false;
+         resetDisplay(context);
+@@ -234,6 +263,11 @@ module ROOT
+         if (!gSequenceCondition.disable_start_session)
+         {
+             var start_session_success = gSequenceCondition.startSessionForRace();
++            log4p("RR: startSessionForRace -> " + (start_session_success ? "ok" : "FAILED"));
++            {
++                var t4p = Thread(self.log4p_poll, context);
++                t4p.start();
++            }
+             if (!start_session_success)
+             {
+                 context.pushEvent(main::menu::MScriptEvent(context, self, "on_failed_to_start_session"));
+diff --git a/src/projects/gt5/race/race.ad b/src/projects/gt5/race/race.ad
+index bf0c7a6..c35e308 100644
+--- a/src/projects/gt5/race/race.ad
++++ b/src/projects/gt5/race/race.ad
+@@ -13,6 +13,14 @@ module PROJECT
+     static MapMode = 2;
+     static MapChatTabChat = true;
+     static gSequenceCondition;
++
++    // --- 4P split patch: diagnostic log
++    static g4p_log = "";
++    function log4p(text)
++    {
++        g4p_log = g4p_log + text + "\n";
++        pdistd::WriteFile("/APP_DATA_RAW/4pmod_race.log", g4p_log.getByteData());
++    }
+     static sNoticeList = pdistd::MNoticeList();
+ 
+     static gRaceBGM;

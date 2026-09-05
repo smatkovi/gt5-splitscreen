@@ -1,0 +1,260 @@
+# GT5 BCES00569 2.17 (decrypted EBOOT sha1 306f86c62b9f03041c903be96ac59e5c3f130452, load base 0x10000)
+# address  original  new       original-disasm            new-disasm
+# original == 00000000 marks code-cave words (free zeroed R-X memory).
+
+## viewport count 3 / slot twin  (viewport3_words.txt)
+00379c30  39290002  39290003  addi r9, r9, 2             addi r9, r9, 3
+0037b250  3BFF0002  3BFF0003  addi r31, r31, 2           addi r31, r31, 3
+
+## MOrganizer player entries x4  (morg_entries4_words.txt)
+01580f00  00000000  38600A40  (cave)                     li r3, 0xa40
+01580f04  00000000  4B640A71  (cave)                     bl 0xbc1974
+01580f08  00000000  80A100C8  (cave)                     lwz r5, 0xc8(r1)
+01580f0c  00000000  906502B8  (cave)                     stw r3, 0x2b8(r5)
+01580f10  00000000  38030A40  (cave)                     addi r0, r3, 0xa40
+01580f14  00000000  900502BC  (cave)                     stw r0, 0x2bc(r5)
+01580f18  00000000  7C651B78  (cave)                     mr r5, r3
+01580f1c  00000000  4B6B9DB8  (cave)                     b 0xc3acd4
+00c3acd0  38A502B8  48946230  addi r5, r5, 0x2b8         b 0x1580f00
+00c3ace4  2F9CFFFF  2F9CFFFD  cmpwi cr7, r28, -1         cmpwi cr7, r28, -3
+00170b78  7D29CA14  815902B8  add r9, r9, r25            lwz r10, 0x2b8(r25)
+00170b7c  38A902B8  7CA95214  addi r5, r9, 0x2b8         add r5, r9, r10
+00175cec  3BBB02B8  83BB02B8  addi r29, r27, 0x2b8       lwz r29, 0x2b8(r27)
+00176164  3B9B02B8  839B02B8  addi r28, r27, 0x2b8       lwz r28, 0x2b8(r27)
+001762dc  3B9B02B8  839B02B8  addi r28, r27, 0x2b8       lwz r28, 0x2b8(r27)
+001833e4  3BBE02B8  83BE02B8  addi r29, r30, 0x2b8       lwz r29, 0x2b8(r30)
+00175d00  2F9F0001  2F9F0003  cmpwi cr7, r31, 1          cmpwi cr7, r31, 3
+00176180  2F9E0001  2F9E0003  cmpwi cr7, r30, 1          cmpwi cr7, r30, 3
+001833f8  2F9C0001  2F9C0003  cmpwi cr7, r28, 1          cmpwi cr7, r28, 3
+00c40570  3BDA02B8  83DA02B8  addi r30, r26, 0x2b8       lwz r30, 0x2b8(r26)
+00c405ac  3BDA02B8  83DA02B8  addi r30, r26, 0x2b8       lwz r30, 0x2b8(r26)
+00c41d98  3BDA02B8  83DA02B8  addi r30, r26, 0x2b8       lwz r30, 0x2b8(r26)
+00c41dd4  3BDA02B8  83DA02B8  addi r30, r26, 0x2b8       lwz r30, 0x2b8(r26)
+01580f40  00000000  83FA02BC  (cave)                     lwz r31, 0x2bc(r26)
+01580f44  00000000  4B6BF62C  (cave)                     b 0xc40570
+00c40558  48000018  489409E8  b 0xc40570                 b 0x1580f40
+01580f48  00000000  83FA02BC  (cave)                     lwz r31, 0x2bc(r26)
+01580f4c  00000000  4B6BF660  (cave)                     b 0xc405ac
+00c40568  48000044  489409E0  b 0xc405ac                 b 0x1580f48
+01580f50  00000000  83FA02BC  (cave)                     lwz r31, 0x2bc(r26)
+01580f54  00000000  4B6C0E44  (cave)                     b 0xc41d98
+00c41d80  48000018  4893F1D0  b 0xc41d98                 b 0x1580f50
+01580f58  00000000  83FA02BC  (cave)                     lwz r31, 0x2bc(r26)
+01580f5c  00000000  4B6C0E78  (cave)                     b 0xc41dd4
+00c41d90  48000044  4893F1C8  b 0xc41dd4                 b 0x1580f58
+
+## window slots x4  (win4_words.txt)
+0045f2ac  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+0045f2b4  7C632214  7C6B2214  add r3, r3, r4             add r3, r11, r4
+0045f2b8  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+0045f2cc  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+0045f2d8  7C632214  7C6B2214  add r3, r3, r4             add r3, r11, r4
+0045f2dc  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+0045f34c  38A50010  8163F830  addi r5, r5, 0x10          lwz r11, -0x7d0(r3)
+0045f358  7C632A14  7C6B2A14  add r3, r3, r5             add r3, r11, r5
+0045f35c  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+0045f3bc  2F9F0001  2F9F0003  cmpwi cr7, r31, 1          cmpwi cr7, r31, 3
+0045f4e0  2F9F0001  2F9F0003  cmpwi cr7, r31, 1          cmpwi cr7, r31, 3
+0045f7c4  2F9F0001  2F9F0003  cmpwi cr7, r31, 1          cmpwi cr7, r31, 3
+0045f7f8  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+0045f804  7C632214  7C6B2214  add r3, r3, r4             add r3, r11, r4
+0045f808  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+0045f8ac  7D3EFA14  813EF830  add r9, r30, r31           lwz r9, -0x7d0(r30)
+0045f8b4  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+0045f8b8  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+0045f8c0  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0045f900  7D3EFA14  813EF830  add r9, r30, r31           lwz r9, -0x7d0(r30)
+0045f908  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+0045f90c  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+0045f914  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0045fa04  38A50010  8163F830  addi r5, r5, 0x10          lwz r11, -0x7d0(r3)
+0045fa10  7C632A14  7C6B2A14  add r3, r3, r5             add r3, r11, r5
+0045fa14  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+0045fa58  7D3CFA14  813CF830  add r9, r28, r31           lwz r9, -0x7d0(r28)
+0045fa60  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+0045fa68  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+0045fa70  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0045faa8  38A50010  8164F830  addi r5, r5, 0x10          lwz r11, -0x7d0(r4)
+0045fab8  7C842A14  7C8B2A14  add r4, r4, r5             add r4, r11, r5
+0045fac4  8084000C  80840000  lwz r4, 0xc(r4)            lwz r4, 0(r4)
+0045fb9c  38A50010  8163F830  addi r5, r5, 0x10          lwz r11, -0x7d0(r3)
+0045fba8  7C632A14  7C6B2A14  add r3, r3, r5             add r3, r11, r5
+0045fbac  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+0045fbf4  7D3EFA14  813EF830  add r9, r30, r31           lwz r9, -0x7d0(r30)
+0045fbfc  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+0045fc00  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+0045fc08  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0045fcd4  7D3FF214  813EF830  add r9, r31, r30           lwz r9, -0x7d0(r30)
+0045fcdc  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+0045fce0  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+0045fce8  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0045fd2c  38C60010  8163F830  addi r6, r6, 0x10          lwz r11, -0x7d0(r3)
+0045fd3c  7C633214  7C6B3214  add r3, r3, r6             add r3, r11, r6
+0045fd50  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+0045fd74  38A50010  8163F830  addi r5, r5, 0x10          lwz r11, -0x7d0(r3)
+0045fd84  7C632A14  7C6B2A14  add r3, r3, r5             add r3, r11, r5
+0045fd88  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+0045fdbc  39290010  8163F830  addi r9, r9, 0x10          lwz r11, -0x7d0(r3)
+0045fdcc  7C634A14  7C6B4A14  add r3, r3, r9             add r3, r11, r9
+0045fdd0  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+0045fe04  7D3EFA14  813EF830  add r9, r30, r31           lwz r9, -0x7d0(r30)
+0045fe08  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+0045fe0c  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+0045fe14  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0045fe50  3BE3001C  83E3F830  addi r31, r3, 0x1c         lwz r31, -0x7d0(r3)
+0045fe70  2F9E0001  2F9E0003  cmpwi cr7, r30, 1          cmpwi cr7, r30, 3
+0045fec0  7D3EFA14  813EF830  add r9, r30, r31           lwz r9, -0x7d0(r30)
+0045fec8  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+0045fed0  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+0045fed8  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0045ff20  7D3EFA14  813EF830  add r9, r30, r31           lwz r9, -0x7d0(r30)
+0045ff24  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+0045ff28  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+0045ff30  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0045ffa4  7D3DFA14  813DF830  add r9, r29, r31           lwz r9, -0x7d0(r29)
+0045ffac  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+0045ffb0  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+0045ffb8  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0046002c  7D3DFA14  813DF830  add r9, r29, r31           lwz r9, -0x7d0(r29)
+00460034  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+00460038  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+00460040  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0046008c  7D3DFA14  813DF830  add r9, r29, r31           lwz r9, -0x7d0(r29)
+00460094  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+00460098  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+004600a0  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+004600ec  7D3DFA14  813DF830  add r9, r29, r31           lwz r9, -0x7d0(r29)
+004600f4  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+004600f8  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+00460100  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0046014c  7D3DFA14  813DF830  add r9, r29, r31           lwz r9, -0x7d0(r29)
+00460154  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+00460158  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+00460160  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+004601dc  3BE3001C  83E3F830  addi r31, r3, 0x1c         lwz r31, -0x7d0(r3)
+00460230  2F9E0001  2F9E0003  cmpwi cr7, r30, 1          cmpwi cr7, r30, 3
+00460284  3BE3001C  83E3F830  addi r31, r3, 0x1c         lwz r31, -0x7d0(r3)
+004602b0  2F9E0001  2F9E0003  cmpwi cr7, r30, 1          cmpwi cr7, r30, 3
+004602e0  38A50010  8163F830  addi r5, r5, 0x10          lwz r11, -0x7d0(r3)
+004602ec  7C632A14  7C6B2A14  add r3, r3, r5             add r3, r11, r5
+004602f0  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+00460314  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+00460320  7C632214  7C6B2214  add r3, r3, r4             add r3, r11, r4
+00460324  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+004603a0  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+004603ac  7C632214  7C6B2214  add r3, r3, r4             add r3, r11, r4
+004603b0  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+004603f4  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+004603fc  7C632214  7C6B2214  add r3, r3, r4             add r3, r11, r4
+00460400  8163000C  81630000  lwz r11, 0xc(r3)           lwz r11, 0(r3)
+0046042c  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+00460438  7C632214  7C6B2214  add r3, r3, r4             add r3, r11, r4
+0046043c  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+00460478  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+00460484  7C632214  7C6B2214  add r3, r3, r4             add r3, r11, r4
+00460488  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+004604b0  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+004604bc  7C632214  7C6B2214  add r3, r3, r4             add r3, r11, r4
+004604c0  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+004604ec  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+004604fc  7C632214  7C6B2214  add r3, r3, r4             add r3, r11, r4
+00460500  83A3000C  83A30000  lwz r29, 0xc(r3)           lwz r29, 0(r3)
+00460550  38A50010  8164F830  addi r5, r5, 0x10          lwz r11, -0x7d0(r4)
+00460560  7C842A14  7C8B2A14  add r4, r4, r5             add r4, r11, r5
+0046056c  8084000C  80840000  lwz r4, 0xc(r4)            lwz r4, 0(r4)
+004605e8  3BE3001C  83E3F830  addi r31, r3, 0x1c         lwz r31, -0x7d0(r3)
+00460648  2F9D0001  2F9D0003  cmpwi cr7, r29, 1          cmpwi cr7, r29, 3
+004606f4  7D3EFA14  813EF830  add r9, r30, r31           lwz r9, -0x7d0(r30)
+004606f8  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+004606fc  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+00460704  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0046074c  7D3EFA14  813EF830  add r9, r30, r31           lwz r9, -0x7d0(r30)
+00460750  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+00460754  8069001C  80690000  lwz r3, 0x1c(r9)           lwz r3, 0(r9)
+0046075c  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+0046078c  38A50010  8163F830  addi r5, r5, 0x10          lwz r11, -0x7d0(r3)
+0046079c  7C632A14  7C6B2A14  add r3, r3, r5             add r3, r11, r5
+004607b4  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+004607d8  38C60010  8163F830  addi r6, r6, 0x10          lwz r11, -0x7d0(r3)
+004607e8  7C633214  7C6B3214  add r3, r3, r6             add r3, r11, r6
+004607fc  8063000C  80630000  lwz r3, 0xc(r3)            lwz r3, 0(r3)
+00460814  2F840000  9083002C  cmpwi cr7, r4, 0           stw r4, 0x2c(r3)
+00460818  9083002C  8143F830  stw r4, 0x2c(r3)           lwz r10, -0x7d0(r3)
+0046081c  419D0014  39000000  bgt cr7, 0x460830          li r8, 0
+00460820  8123001C  812A0000  lwz r9, 0x1c(r3)           lwz r9, 0(r10)
+00460824  38000000  7F882000  li r0, 0                   cmpw cr7, r8, r4
+00460828  9809000C  38000001  stb r0, 0xc(r9)            li r0, 1
+0046082c  48000010  419C0008  b 0x46083c                 blt cr7, 0x460834
+00460830  8123001C  38000000  lwz r9, 0x1c(r3)           li r0, 0
+00460834  38000001  9809000C  li r0, 1                   stb r0, 0xc(r9)
+00460838  9809000C  394A0008  stb r0, 0xc(r9)            addi r10, r10, 8
+0046083c  8003002C  39080001  lwz r0, 0x2c(r3)           addi r8, r8, 1
+00460840  2F800001  2F880004  cmpwi cr7, r0, 1           cmpwi cr7, r8, 4
+00460844  409D0014  409EFFDC  ble cr7, 0x460858          bne cr7, 0x460820
+00460848  81230024  4E800020  lwz r9, 0x24(r3)           blr 
+0046084c  38000001  60000000  li r0, 1                   nop 
+00460850  9809000C  60000000  stb r0, 0xc(r9)            nop 
+00460854  4E800020  60000000  blr                        nop 
+00460858  81230024  60000000  lwz r9, 0x24(r3)           nop 
+0046085c  38000000  60000000  li r0, 0                   nop 
+00460860  9809000C  60000000  stb r0, 0xc(r9)            nop 
+00460864  4E800020  60000000  blr                        nop 
+00460880  3BE3001C  83E3F830  addi r31, r3, 0x1c         lwz r31, -0x7d0(r3)
+004608a0  2F9E0001  2F9E0003  cmpwi cr7, r30, 1          cmpwi cr7, r30, 3
+004608fc  3BE3001C  83E3F830  addi r31, r3, 0x1c         lwz r31, -0x7d0(r3)
+00460938  2F9E0001  2F9E0003  cmpwi cr7, r30, 1          cmpwi cr7, r30, 3
+004609d0  2F9F0001  2F9F0003  cmpwi cr7, r31, 1          cmpwi cr7, r31, 3
+00460a44  2F9F0001  2F9F0003  cmpwi cr7, r31, 1          cmpwi cr7, r31, 3
+00460c34  7D39FA14  8139F830  add r9, r25, r31           lwz r9, -0x7d0(r25)
+00460c3c  79290020  7D29FA14  clrldi r9, r9, 0x20        add r9, r9, r31
+00460c44  8169001C  81690000  lwz r11, 0x1c(r9)          lwz r11, 0(r9)
+00460c60  2F9F0008  2F9F0018  cmpwi cr7, r31, 8          cmpwi cr7, r31, 0x18
+00460ccc  38840010  8163F830  addi r4, r4, 0x10          lwz r11, -0x7d0(r3)
+00460cdc  7F432214  7F4B2214  add r26, r3, r4            add r26, r11, r4
+00460d34  809A000C  809A0000  lwz r4, 0xc(r26)           lwz r4, 0(r26)
+00460d74  809A000C  809A0000  lwz r4, 0xc(r26)           lwz r4, 0(r26)
+00462124  39200001  4911EEDC  li r9, 1                   b 0x1581000
+01581000  00000000  38600040  (cave)                     li r3, 0x40
+01581004  00000000  4B640971  (cave)                     bl 0xbc1974
+01581008  00000000  7C7F1B78  (cave)                     mr r31, r3
+0158100c  00000000  93FDF830  (cave)                     stw r31, -0x7d0(r29)
+01581010  00000000  801D001C  (cave)                     lwz r0, 0x1c(r29)
+01581014  00000000  901F0000  (cave)                     stw r0, 0(r31)
+01581018  00000000  801D0020  (cave)                     lwz r0, 0x20(r29)
+0158101c  00000000  901F0004  (cave)                     stw r0, 4(r31)
+01581020  00000000  801D0024  (cave)                     lwz r0, 0x24(r29)
+01581024  00000000  901F0008  (cave)                     stw r0, 8(r31)
+01581028  00000000  801D0028  (cave)                     lwz r0, 0x28(r29)
+0158102c  00000000  901F000C  (cave)                     stw r0, 0xc(r31)
+01581030  00000000  38600740  (cave)                     li r3, 0x740
+01581034  00000000  4B640941  (cave)                     bl 0xbc1974
+01581038  00000000  7C7E1B78  (cave)                     mr r30, r3
+0158103c  00000000  38800002  (cave)                     li r4, 2
+01581040  00000000  4AEE82E1  (cave)                     bl 0x469320
+01581044  00000000  93DF0010  (cave)                     stw r30, 0x10(r31)
+01581048  00000000  38600740  (cave)                     li r3, 0x740
+0158104c  00000000  4B640929  (cave)                     bl 0xbc1974
+01581050  00000000  7C7E1B78  (cave)                     mr r30, r3
+01581054  00000000  38800003  (cave)                     li r4, 3
+01581058  00000000  4AEE82C9  (cave)                     bl 0x469320
+0158105c  00000000  93DF0018  (cave)                     stw r30, 0x18(r31)
+01581060  00000000  3D000194  (cave)                     lis r8, 0x194
+01581064  00000000  610872F0  (cave)                     ori r8, r8, 0x72f0
+01581068  00000000  911F0014  (cave)                     stw r8, 0x14(r31)
+0158106c  00000000  911F001C  (cave)                     stw r8, 0x1c(r31)
+01581070  00000000  39200001  (cave)                     li r9, 1
+01581074  00000000  38000000  (cave)                     li r0, 0
+01581078  00000000  913D0030  (cave)                     stw r9, 0x30(r29)
+0158107c  00000000  913D002C  (cave)                     stw r9, 0x2c(r29)
+01581080  00000000  3D200180  (cave)                     lis r9, 0x180
+01581084  00000000  39600000  (cave)                     li r11, 0
+01581088  00000000  981D0039  (cave)                     stb r0, 0x39(r29)
+0158108c  00000000  981D0034  (cave)                     stb r0, 0x34(r29)
+01581090  00000000  981D0035  (cave)                     stb r0, 0x35(r29)
+01581094  00000000  981D0036  (cave)                     stb r0, 0x36(r29)
+01581098  00000000  981D0037  (cave)                     stb r0, 0x37(r29)
+0158109c  00000000  981D0038  (cave)                     stb r0, 0x38(r29)
+015810a0  00000000  9169D0B4  (cave)                     stw r11, -0x2f4c(r9)
+015810a4  00000000  997D0018  (cave)                     stb r11, 0x18(r29)
+015810a8  00000000  4AEE10B4  (cave)                     b 0x46215c
+

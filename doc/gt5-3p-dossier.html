@@ -1,0 +1,593 @@
+<title>GT5 Dreispieler-Dossier</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground:    #E9EDF0;
+    --surface:   #FBFCFD;
+    --surface-2: #F1F4F6;
+    --ink:       #0F151B;
+    --ink-2:     #47535F;
+    --ink-3:     #75828D;
+    --rule:      #CBD4DB;
+    --rule-soft: #DEE5EA;
+    --accent:    #17457F;
+    --accent-2:  #2E6EB8;
+    --stuck:     #A83E12;
+    --stuck-bg:  #F6E4DA;
+    --ok:        #2A6248;
+    --ok-bg:     #DDEAE2;
+    --dead:      #6B7280;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #0E1418;
+      --surface:   #161E24;
+      --surface-2: #1C262D;
+      --ink:       #DBE3E9;
+      --ink-2:     #9DAAB5;
+      --ink-3:     #74828D;
+      --rule:      #2C3941;
+      --rule-soft: #222D34;
+      --accent:    #7FB1E6;
+      --accent-2:  #A6CBF2;
+      --stuck:     #E58C5C;
+      --stuck-bg:  #33211A;
+      --ok:        #74BE9A;
+      --ok-bg:     #172C24;
+      --dead:      #5E6B75;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:    #0E1418;
+    --surface:   #161E24;
+    --surface-2: #1C262D;
+    --ink:       #DBE3E9;
+    --ink-2:     #9DAAB5;
+    --ink-3:     #74828D;
+    --rule:      #2C3941;
+    --rule-soft: #222D34;
+    --accent:    #7FB1E6;
+    --accent-2:  #A6CBF2;
+    --stuck:     #E58C5C;
+    --stuck-bg:  #33211A;
+    --ok:        #74BE9A;
+    --ok-bg:     #172C24;
+    --dead:      #5E6B75;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    font-size: 16.5px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 20px 96px;
+  }
+
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  /* ---------- Kopf ---------- */
+  header {
+    padding-top: 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  h1 {
+    font-family: "Zilla Slab", Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(30px, 5.2vw, 46px);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--ink-3);
+    border-top: 1px solid var(--rule);
+    padding-top: 14px;
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- Abschnitte ---------- */
+  section { display: flex; flex-direction: column; gap: 16px; }
+  h2 {
+    font-family: "Zilla Slab", Georgia, serif;
+    font-weight: 600;
+    font-size: 25px;
+    letter-spacing: -0.01em;
+    margin: 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--ink);
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: "Zilla Slab", Georgia, serif;
+    font-weight: 600;
+    font-size: 18px;
+    margin: 0;
+    color: var(--ink);
+  }
+  p { margin: 0; max-width: 68ch; }
+  p + p { margin-top: -4px; }
+  a { color: var(--accent); }
+
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.88em;
+    font-variant-numeric: tabular-nums;
+  }
+  p code, li code, td code {
+    background: var(--surface-2);
+    border-radius: 3px;
+    padding: 0.1em 0.34em;
+  }
+
+  /* ---------- Statuskarte ---------- */
+  .status {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--stuck);
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .status .label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--stuck);
+  }
+  .status p { font-size: 17.5px; }
+
+  /* ---------- Kette ---------- */
+  .chain {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 18px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule-soft);
+    align-items: baseline;
+  }
+  .step:last-child { border-bottom: none; }
+  .step.tail { background: var(--stuck-bg); }
+  .step .addr {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .step.tail .addr { color: var(--stuck); }
+  .step .what { font-size: 15.5px; line-height: 1.5; }
+  .step .what em {
+    font-style: normal;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.88em;
+    color: var(--ink-2);
+  }
+
+  /* ---------- Tabellen ---------- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.addr, td.val {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--accent);
+  }
+  td.val { color: var(--ink); }
+  td.name { font-family: "IBM Plex Mono", ui-monospace, monospace; white-space: nowrap; }
+
+  .pill {
+    display: inline-block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .pill.ok    { background: var(--ok-bg);    color: var(--ok); }
+  .pill.stuck { background: var(--stuck-bg); color: var(--stuck); }
+
+  /* ---------- Code ---------- */
+  pre {
+    margin: 0;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    overflow-x: auto;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--ink);
+    tab-size: 4;
+  }
+  pre .c { color: var(--ink-3); }
+  pre .h { color: var(--stuck); }
+
+  /* ---------- Listen ---------- */
+  ul.plain { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  ul.plain > li {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3px;
+    padding-left: 16px;
+    border-left: 2px solid var(--rule);
+  }
+  ul.plain > li strong { font-weight: 600; }
+  ul.plain > li span { color: var(--ink-2); font-size: 15px; }
+
+  ol.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+  ol.steps li { padding-left: 4px; }
+  ol.steps li::marker { font-family: "IBM Plex Mono", monospace; color: var(--ink-3); font-size: 13px; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 18px;
+    color: var(--ink-3);
+    font-size: 14px;
+  }
+
+  @media (max-width: 620px) {
+    .step { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Gran Turismo 5 &middot; BCES00569 &middot; Update 2.17 &middot; PS3 CFW</div>
+  <h1>Dreispieler-Splitscreen: Ermittlungsstand</h1>
+  <p class="standfirst">Die Engine trägt drei Spieler durch die gesamte Ladekette. Es klemmt an genau einer Stelle: der dritte Ladeauftrag wird abgeholt, aber nie abgeschlossen.</p>
+  <div class="meta">
+    <span><b>Stand</b> 3. September 2026</span>
+    <span><b>EBOOT</b> sha1 306f86c6…0452</span>
+    <span><b>Organizer</b> 0x4FEB9000</span>
+    <span><b>Slot-Array</b> 0x42402010</span>
+  </div>
+</header>
+
+<section>
+  <div class="status" style="border-left-color: var(--ok);">
+    <div class="label" style="color: var(--ok);">GELÖST — Auto-Laden, 4. September</div>
+    <p>Der Resetter ist gefunden und neutralisiert: Funktion <code>0x381e54</code> setzte Slot 2 nach dem Laden über ihren <code>[slot+0x28]!=0</code>-Zweig auf Zustand 22 zurück (bestätigt durch Cave am Zustandssetzer <code>0x3b87a8</code>, Aufrufer-LR <code>0x381fc0</code>). Ein Fix-Cave bei <code>0x381fb0</code> überspringt den 22-Schreib, wenn der Slot Slot 2 ist und bereits auf 11 (geladen) steht. <strong>Ergebnis: alle drei Autos laden, die Ladeschleife wird verlassen</strong> (<code>carload loop passed</code>), die Sequenz läuft durch bis <code>startSessionForRace → ok</code>.</p>
+  </div>
+  <div class="status">
+    <div class="label">Sequenz läuft mit 3 Autos bis Session-Start (4. September)</div>
+    <p>Mit Load-Fix + viewport_count=3 (<code>0x379c30</code> +2→+3, sicher, kein Absturz) laden alle drei Autos <strong>stabil</strong> (alle Slots Zustand 11) und die Sequenz läuft komplett durch: <code>carload passed → canEnterCourse → enterCourse → inCourse → after_coursein_func → RR.onInitialize → startSessionForRace → ok</code>. Danach hängt es in der Session-/Render-Init. <code>allEntries=0</code> war nicht der Stopp (die Sequenz lief daran vorbei).</p>
+  </div>
+  <div class="status">
+    <div class="label">Die letzte Wand: Fenster[2] — Teilerfolg + Freeze</div>
+    <p>Fenster-Manager (<code>[org+0x9c4]</code>, zur Laufzeit 0x422D8A90): <code>+0x1c</code>=win0, <code>+0x24</code>=win1, <code>+0x2c</code>=window_max, <code>+0x30</code>=clamp. Zwei Objekte, Engine will drei. <strong>Bewiesen (Isolationstest):</strong> der Fenster-Konstruktor <code>0x469320</code> mit Index 2 ist absturzfrei — ein drittes Objekt lässt sich anlegen (0x740-Objekt + 0xe580-Datenblock, per Cave nach der Ctor-Schleife bei <code>0x462124</code>). <strong>Offen:</strong> das Fenster[2] LEBENDIG zu verdrahten friert die Konsole ein (Endlos-Hang, PS-Knopf lebt). Ursache: eng gekoppelt — window_max/clamp müssen von <code>+0x2c/+0x30</code> auf Bytes <code>+0x37/+0x3b</code> weichen (einzige freie Plätze), setWindowMax neu gefasst, 22 Fenster­schleifen auf 3, und getWindowMax=3 treibt Iteratoren (<code>0x2284f8/0x229310</code>) über Fenster[2]. Jeder Teilzustand ist inkonsistent und hängt einzeln.</p>
+  </div>
+  <div class="status" style="border-left-color: var(--accent);">
+    <div class="label" style="color: var(--accent);">Nächster Schritt: RPCS3 statt Konsole</div>
+    <p>Die Fenster-Integration per Freeze-und-Neustart auf echter Hardware zu debuggen ist zu langsam. Der Schwenk: das gepatchte Spiel in RPCS3 laufen lassen (Emulator ist für die EBOOT-Entschlüsselung ohnehin da) und mit dessen Debugger (Breakpoints, Register, Einzelschritt) die genaue Instruktion finden, die mit Fenster[2] ins Leere greift. Der vollständige 75-Wort-Patch (<code>win3b</code>) und alle Bausteine liegen bereit.</p>
+  </div>
+
+  <div class="status" style="border-left-color: var(--ok);">
+    <div class="label" style="color: var(--ok);">Cave-Instrumentierung, 3. September — der Schlüsselbefund</div>
+    <p>Ein Code-Cave (bei <code>0x1580ca0</code>, schreibgeschützter R-E-Speicher) hakt die pro-Slot-Funktion <code>0x381e54</code> an ihrer Weiche (<code>0x381ec8</code>) ein und protokolliert pro Slot <code>[count, +0x28, +0x4, state]</code>. Ergebnis: <strong>alle drei Slots erreichen Zustand 11 (geladen)</strong>, <code>count=1</code>, <code>+0x28=0</code> — auch Slot 2. Das heißt: Slot 2 <strong>lädt vollständig</strong>, <code>0x381e54</code> rückt ihn korrekt auf dem Advance-Pfad vor (nicht dem Reset-Pfad) und ist <strong>nicht</strong> der Resetter. Danach wird Slot 2 von einer anderen Routine auf 22 zurückgeworfen (<code>+0x510</code>: 3→1, <code>+0x4f4</code>: 11→22).</p>
+    <p>Der Reset läuft <strong>nicht</strong> über die Zustandsprimitive <code>0x3b87a8</code> (die mein Scan absuchte), sondern über direkte Schreiber von <code>+0x4f4</code>/<code>+0x510</code> — Kandidaten sind die Slot-Init-Routinen <code>0x3b8f18</code> (schreibt <code>+0x510=1</code>) und die Funktionen um <code>0x3b9b70</code>/<code>0x3ba000</code> (schreiben beide Felder direkt). Nächste Instrumentierung: diese Schreiber einhaken und den Aufrufer (LR) bei Slot 2 mitschneiden.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Die Kette</h2>
+  <p>Vom Warten im Skript bis zur Stelle, an der es hängt. Jeder Schritt ist gemessen, nicht erschlossen.</p>
+
+  <div class="chain">
+    <div class="step">
+      <span class="addr">Skript</span>
+      <span class="what"><strong>LoadingUtil</strong> wartet in <em>while (!ORG.hasLoadingCarDone())</em> — der Ladebalken ist voll, das Rennen startet nicht.</span>
+    </div>
+    <div class="step">
+      <span class="addr">0x38242C</span>
+      <span class="what"><strong>hasLoadingCarDone</strong> läuft über die Slots. Ein Slot gilt als fertig, wenn <em>+0x0C == 0</em> oder <em>+0x10 != 0</em>. Slot 2 hat ein Auto-Objekt, aber <em>+0x10 == 0</em> → false.</span>
+    </div>
+    <div class="step">
+      <span class="addr">0x389970</span>
+      <span class="what"><strong>Fertigmeldung.</strong> Nimmt Organizer und Slot-Index, setzt Zustand 11. Bei Index <em>-1</em> passiert nichts.</span>
+    </div>
+    <div class="step">
+      <span class="addr">0x393924</span>
+      <span class="what"><strong>Auftragserzeuger.</strong> Schreibt je Auftrag Slot-Index nach <em>+0x28</em>, Slot-Zeiger nach <em>+0x24</em>, reiht über <em>0xA8B7D8</em> ein. Torwächter: <em>erzeugte &lt; Slot-Anzahl</em>. Alle drei Aufträge wurden erzeugt.</span>
+    </div>
+    <div class="step">
+      <span class="addr">0x394258</span>
+      <span class="what"><strong>Auftragsabnehmer.</strong> Verwirft bei <em>+0x28 == -1</em>, <em>+0x24 == 0</em> oder gesetztem Abbruchzähler. Keines davon trifft zu. Setzt nach Erledigung <em>+0x28 = -1</em> — bei Job 0 und 1 geschehen, bei Job 2 nicht.</span>
+    </div>
+    <div class="step">
+      <span class="addr">0x394554</span>
+      <span class="what"><strong>Warteschleife.</strong> Läuft, bis <em>0x3B74A4(slot)</em> und ein nicht-leeres Element-Array beide zutreffen. Beides trifft für Slot 2 zu.</span>
+    </div>
+    <div class="step tail">
+      <span class="addr">0x4EFFA0</span>
+      <span class="what"><strong>Hier endet die Spur.</strong> Prüft <em>element[slot_index]</em> aus dem Array bei <em>org+0xA58</em>. Das Array hat drei Elemente, Element 2 ist vollständig gefüllt, und <em>obj-&gt;[0x78]</em> ist bei allen drei bitgleich. Die Prüfung müsste passieren — tut es aber offenbar nicht.</span>
+    </div>
+  </div>
+
+  <p>Der letzte Schritt ist der offene Punkt. Ein Standbild reicht dafür nicht mehr aus; der Unterschied liegt im Verlauf, nicht im Zustand.</p>
+</section>
+
+<section>
+  <h2>Zustandsautomat der Slots</h2>
+  <p>Slots wechseln ihren Zustand über <code>0x3B87A8(slot, zustand)</code> unter der Sperre bei <code>slot+0x4EC</code>; <code>0x3B8780</code> gibt sie frei. Der Zustand liegt in <code>slot+0x4F4</code>. Gefundene Übergänge:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Zustand</th><th>gesetzt bei</th><th>Zustand</th><th>gesetzt bei</th><th>Zustand</th><th>gesetzt bei</th></tr></thead>
+      <tbody>
+        <tr><td class="val">1</td><td class="addr">0x39635C</td><td class="val">9</td><td class="addr">0x38D290</td><td class="val">20</td><td class="addr">0x37FB68</td></tr>
+        <tr><td class="val">2</td><td class="addr">0x391434</td><td class="val">10</td><td class="addr">0x38CB30</td><td class="val">21</td><td class="addr">0x381F7C</td></tr>
+        <tr><td class="val">3</td><td class="addr">0x391D9C</td><td class="val"><span class="pill ok">11</span></td><td class="addr">0x3899C4</td><td class="val"><span class="pill stuck">22</span></td><td class="addr">0x381FBC</td></tr>
+        <tr><td class="val">4</td><td class="addr">0x393CD0</td><td class="val">12</td><td class="addr">0x394500</td><td class="val">23</td><td class="addr">0x37E950</td></tr>
+        <tr><td class="val">5</td><td class="addr">0x394860</td><td class="val">13</td><td class="addr">0x3945CC</td><td class="val">30</td><td class="addr">0x3815D0</td></tr>
+        <tr><td class="val">6</td><td class="addr">0x3946E4</td><td class="val">14</td><td class="addr">0x389AA4</td><td class="val">31</td><td class="addr">0x398628</td></tr>
+        <tr><td class="val">&nbsp;</td><td class="addr">&nbsp;</td><td class="val">16</td><td class="addr">0x3941AC</td><td class="val">32</td><td class="addr">0x3989E8</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>11</strong> ist „geladen", <strong>22</strong> der Zustand, in dem Slot 2 hängen bleibt. Zustand 81 (<code>0x51</code>, bei <code>0x3982E4</code>) gehört vermutlich zu einem anderen Pfad.</p>
+</section>
+
+<section>
+  <h2>Speicherlayout</h2>
+
+  <h3>Organizer</h3>
+  <p>Im Testlauf bei <code>0x4FEB9000</code>. Die Adresse war über alle Läufe stabil — der Allokator ist deterministisch.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Offset</th><th>Bedeutung</th><th>Referenz (16 Autos)</th><th>Split, 3 Spieler</th></tr></thead>
+      <tbody>
+        <tr><td class="name">+0x1C</td><td>Objekt mit Abbruchzähler bei <code>+0x64</code></td><td class="val">—</td><td class="val">0</td></tr>
+        <tr><td class="name">+0x234</td><td>Slot-Array, Schrittweite <code>0x640</code></td><td class="val">0x42402010</td><td class="val">0x42402010</td></tr>
+        <tr><td class="name">+0x288</td><td>offene Aufträge</td><td class="val">—</td><td class="val">1</td></tr>
+        <tr><td class="name">+0x984</td><td>Slot-Anzahl</td><td class="val">16</td><td class="val">3</td></tr>
+        <tr><td class="name">+0x988</td><td>erzeugte Aufträge</td><td class="val">16</td><td class="val">3</td></tr>
+        <tr><td class="name">+0xA58 / +0xA5C</td><td>Element-Array, 24 Byte je Element, Anfang und Ende</td><td class="val">—</td><td class="val">3 Elemente</td></tr>
+        <tr><td class="name">+0xB90</td><td>Auftrags-Warteschlange (leer = Selbstzeiger)</td><td class="val">—</td><td class="val">leer</td></tr>
+        <tr><td class="name">+0xBD8</td><td>Auftragsarray, <code>0x34</code> je Eintrag</td><td class="val">—</td><td class="val">0x4FEED800</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Slot</h3>
+  <p>Die drei Slots unterscheiden sich in genau sieben Feldern. Slot 0 gegen Slot 1 zeigt nur den Index — alles andere ist Rauschen-frei.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Offset</th><th>Bedeutung</th><th>Slot 0 / 1</th><th>Slot 2</th></tr></thead>
+      <tbody>
+        <tr><td class="name">+0x04</td><td>alter Wert von <code>+0x510</code>, von <code>setReady</code> gesichert</td><td class="val">1</td><td class="val">0</td></tr>
+        <tr><td class="name">+0x0C</td><td>Auto-Objekt</td><td class="val">Zeiger</td><td class="val">Zeiger</td></tr>
+        <tr><td class="name">+0x10</td><td>fertig</td><td class="val">1</td><td class="val">0</td></tr>
+        <tr><td class="name">+0x12</td><td>angefordert</td><td class="val">0</td><td class="val">1</td></tr>
+        <tr><td class="name">+0x1D</td><td>bereit</td><td class="val">1</td><td class="val">0</td></tr>
+        <tr><td class="name">+0x350</td><td>Ansichtszuordnung, <code>-2</code>/<code>-3</code> je nach Modus</td><td class="val">-1</td><td class="val">-1</td></tr>
+        <tr><td class="name">+0x4A8</td><td>Unterobjekt, <code>+0x34</code> ist Beschäftigt-Flagge</td><td class="val">0</td><td class="val">0</td></tr>
+        <tr><td class="name">+0x4D8</td><td>—</td><td class="val">1</td><td class="val">0</td></tr>
+        <tr><td class="name">+0x4EC</td><td>Sperre</td><td class="val">—</td><td class="val">—</td></tr>
+        <tr><td class="name">+0x4F4</td><td>Zustand</td><td class="val">11</td><td class="val">22</td></tr>
+        <tr><td class="name">+0x4F8</td><td>Slot-Index</td><td class="val">0 / 1</td><td class="val">2</td></tr>
+        <tr><td class="name">+0x50A</td><td>von <code>0x3B6A70</code> genullt</td><td class="val">1</td><td class="val">0</td></tr>
+        <tr><td class="name">+0x510</td><td>3 = bereit, 1 = nicht</td><td class="val">3</td><td class="val">1</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Auftrag</h3>
+  <p>Je <code>0x34</code> Bytes im Array bei <code>org+0xBD8</code>.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Offset</th><th>Bedeutung</th><th>Job 0 / 1</th><th>Job 2</th></tr></thead>
+      <tbody>
+        <tr><td class="name">+0x18</td><td>zweiter Slot-Index</td><td class="val">-1</td><td class="val">-1</td></tr>
+        <tr><td class="name">+0x24</td><td>Slot-Zeiger</td><td class="val">gesetzt</td><td class="val">gesetzt</td></tr>
+        <tr><td class="name">+0x28</td><td>Slot-Index, <code>-1</code> = abgearbeitet</td><td class="val">-1</td><td class="val">2</td></tr>
+        <tr><td class="name">+0x2C</td><td>Rückruftabelle</td><td class="val">0x01727E28</td><td class="val">0x01727E28</td></tr>
+        <tr><td class="name">+0x30</td><td>Organizer</td><td class="val">0x4FEB9000</td><td class="val">0x4FEB9000</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2><code>setReady</code> — die fehlende Funktion</h2>
+  <p><code>0x3B61E8</code> hinterlässt genau das Muster, das die geladenen Slots tragen und Slot 2 nicht:</p>
+<pre>setReady(slot):                    <span class="c">; 0x3B61E8</span>
+    alt = slot-&gt;[0x510]
+    if (alt == 3) return           <span class="c">; schon fertig</span>
+    slot-&gt;[0x04]  = alt            <span class="c">; alten Wert sichern</span>
+    slot-&gt;[0x510] = 3
+    if (alt != 1) return
+    slot-&gt;[0x1D]  = 1
+
+Aufrufer: 0x38CE40  0x38DA64  0x3900A8  <span class="h">0x39460C</span>  0x396DF8
+                                        <span class="h">^ im Auftragsabnehmer</span></pre>
+  <p>Der Aufruf bei <code>0x39460C</code> hängt daran, dass <code>0x389970</code> davor <em>true</em> zurückgibt. Genau dorthin kommt Slot 2 nie.</p>
+</section>
+
+<section>
+  <h2>Ausgeschlossen</h2>
+  <p>Jeweils gemessen, nicht verworfen. Diese Wege sind zu und müssen nicht erneut geprüft werden.</p>
+  <ul class="plain">
+    <li><strong>Slot-Anzahl</strong><span>Der <code>+2</code>-Addend in <code>0x37B208</code> und <code>0x379BF0</code> auf 3 gehoben, kalt gesetzt. Keine Wirkung. Das Array hat ohnehin drei Slots.</span></li>
+    <li><strong>Fenster-Maximum</strong><span><code>ORG.window_max = 3</code> vor der Ladeschleife gesetzt — und es stand dort schon vorher auf 3. Kein Absturz, keine Änderung.</span></li>
+    <li><strong>Speicherprofile</strong><span>Alle sechs <code>MemoryAssign</code>-Profile protokolliert. Nur <code>FewCars</code> ist gefüllt (<code>nb_vehicle=4</code>, <code>set_size=84 MiB</code>), alle Größenfelder sind 0 — und zwischen 2P und 3P identisch.</span></li>
+    <li><strong>Automodell</strong><span>Mit drei verschiedenen Codes und mit zwei identischen getestet. Immer zwei geladen.</span></li>
+    <li><strong>Fahrer-Objekt</strong><span>Echter Fehler gefunden und behoben: Spieler 1 und 3 teilten sich ein <code>MCarDriverParameter</code>. Jetzt eigene Objekte, <code>ctrlport</code> 0/1/2. Ergebnis unverändert.</span></li>
+    <li><strong>Spieler-Eigenschaft</strong><span>Entry 2 auf <code>player_no = -1</code> gesetzt, also KI. Lädt genauso wenig.</span></li>
+    <li><strong>Auftragserzeugung</strong><span><code>+0x988 = 3</code>: alle drei Aufträge wurden erzeugt und eingereiht.</span></li>
+    <li><strong>Länge des Element-Arrays</strong><span>72 Bytes bei 24 je Element = drei Elemente, alle gefüllt. Kein Überlauf.</span></li>
+    <li><strong>Auftrag nie verworfen</strong><span>Job 2 trägt gültigen Index (<code>+0x28 = 2</code>), Abbruchzähler 0. Kein Verwerf-Pfad greift.</span></li>
+    <li><strong>Sackgassen-Zustand</strong><span>Zustand 22 ist normal — im Referenzlauf durchläuft ihn jeder Slot und wird erlöst. Slot 2 nicht.</span></li>
+    <li><strong>Race Condition</strong><span>Über mehrere ruhige Läufe immer dasselbe Bild: zwei fertig, einer steht. Kein zufälliges Durchkommen.</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Werkzeugkette</h2>
+  <p>Alles unter <code>~/gt5re/</code>. Voraussetzung: <code>PS3=192.168.1.11</code> gesetzt, webMAN MOD 1.47 mit PS3MAPI.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Werkzeug</th><th>Zweck</th><th>Wann</th></tr></thead>
+      <tbody>
+        <tr><td class="name">deploy_mod.sh</td><td>Pack-Baum, PDIPFS packen, hochladen</td><td>nach jedem <code>adhoc build</code></td></tr>
+        <tr><td class="name">leak_a.sh / leak_b.sh</td><td>Organizer-Adresse per Code-Stub in <code>getLoadedCarCount</code></td><td>A im Hauptmenü, B im Hänger</td></tr>
+        <tr><td class="name">gt5mem.py</td><td>Organizer und alle Slots dumpen, zwei Läufe diffen</td><td>im Hänger</td></tr>
+        <tr><td class="name">dump_jobs.sh</td><td>Auftragsliste und Abbruchzähler</td><td>im Hänger</td></tr>
+        <tr><td class="name">slots.sh</td><td>Slots und Auto-Objekte nebeneinander</td><td>im Hänger</td></tr>
+        <tr><td class="name">fix3rd.sh</td><td>Slot 2 von Hand auf „fertig" setzen</td><td>Experiment</td></tr>
+        <tr><td class="name">poke_cold.sh</td><td>EBOOT-Patch im RAM, kalt gesetzt</td><td>nur im Hauptmenü</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Bauen und ausrollen</h3>
+<pre>cd ~/gt5re
+rm -rf mod_x &amp;&amp; git clone -q OpenAdhoc mod_x
+(cd mod_x &amp;&amp; find . -name '*.Ad' -exec bash -c 'mv "$1" "${1%.Ad}.ad"' _ {} \;)
+python3 ~/Downloads/patch_arcade_v2.py    mod_x/src/projects/gt5/arcade/arcade.ad
+MOD_WINDOW_MAX=3 python3 ~/Downloads/patch_race_log_w4.py mod_x/src/projects/gt5/race
+<span class="c"># CarSplitRoot.ad: cp.checkValid() nach "var cp = car.getCP();"</span>
+(cd mod_x/src/projects/gt5/arcade &amp;&amp; adhoc build) &amp;&amp; (cd mod_x/src/projects/gt5/race &amp;&amp; adhoc build)
+~/gt5re/deploy_mod.sh ~/gt5re/mod_x</pre>
+
+  <h3>Messen</h3>
+<pre><span class="c"># GT5 frisch von der Disc, Hauptmenue:</span>
+~/gt5re/leak_a.sh
+<span class="c"># Split-Battle, Spieler 3 = ja, im haengenden Ladebalken:</span>
+~/gt5re/leak_b.sh
+python3 gt5mem.py dump split3 --org 0x4FEB9000
+~/gt5re/dump_jobs.sh
+
+<span class="c"># der Vergleich, der den Durchbruch gebracht hat: Slot gegen Slot</span>
+<span class="c"># in derselben Datei - gleicher Zeitpunkt, gleicher Modus</span></pre>
+</section>
+
+<section>
+  <h2>Fallstricke</h2>
+  <ul class="plain">
+    <li><strong>Instruktions-Cache</strong><span>Code-Pokes wirken nur, wenn die Funktion seit dem Schreiben nicht schon im I-Cache stand. <em>Immer im Hauptmenü setzen</em>, bevor ein Rennen geladen wurde. Zwei Testläufe waren deshalb wertlos.</span></li>
+    <li><strong>GTToolsSharp unter Linux</strong><span><code>-p</code> braucht einen <em>Schrägstrich am Ende</em>. Ohne ihn bleibt ein führendes <code>/</code> im Pfad stehen, es entsteht ein zweiter TOC-Eintrag, und das Spiel lädt stillschweigend das Original weiter. Kontrollzeile: <code>changed as new</code>.</span></li>
+    <li><strong>OpenAdhoc nie direkt patchen</strong><span>Das Repo ist Referenz. Jeder Testlauf bekommt <code>git clone OpenAdhoc mod_x</code>, danach die <code>.Ad</code>-Dateien kleinschreiben.</span></li>
+    <li><strong>webMAN-Suche begrenzen</strong><span>Eine <code>find</code>-Suche über nicht gemappten Speicher blockiert den einspurigen Webserver dauerhaft — danach nur noch <code>503 Server is Busy</code>. Hilft: <code>curl http://$PS3/restart.ps3</code>.</span></li>
+    <li><strong>Fake-SELF scheitert</strong><span><code>make_self_npdrm</code> baut ein ladbares EBOOT, die PS3 lehnt es mit <code>80010007</code> ab: NPDRM-App-Type <code>EXEC</code>/Key-Revision <code>0x0A</code> statt <code>UEXEC</code>/<code>0x19</code>. Für RAM-Patches irrelevant — PS3MAPI reicht.</span></li>
+    <li><strong>Speicherkarte des Prozesses</strong><span>Gemappt sind <code>0x00010000</code>–<code>0x0195xxxx</code> sowie <code>0x10000000</code>, <code>0x20000000</code>, <code>0x30000000</code>, <code>0x40000000</code>. Der Heap mit dem Organizer liegt bei <code>0x4xxxxxxx</code>.</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Gescheiterte Load-Fixes (gemessen)</h2>
+  <p>Zwei gezielte Byte-Patches gegen den Slot-2-Blocker, beide kalt gesetzt, beide ohne Wirkung — Slot 2 blieb auf Zustand 22:</p>
+  <ul class="plain">
+    <li><strong>Element-Warten überbrücken</strong> (<code>0x394388</code> beq→nop)<span>Das erste Tor der Handler-Schleife (Warten auf <code>0x4effa0</code>) gezwungen. Slot 2 erreichte kurz 11, wurde dann zurückgesetzt — nicht das Wurzelproblem.</span></li>
+    <li><strong>Reset-Verzweigung</strong> (<code>0x381f6c</code> blt→nop)<span>Falsche Weiche: der Zustand-22-Block bei <code>0x381fb0</code> wird auf diesem Pfad <em>unbedingt</em> durchlaufen. Die echte Weiche ist <code>0x381fac</code> (<code>beq 0x382084</code>, überspringt 22 nur wenn <code>[slot+4]==1</code>).</span></li>
+  </ul>
+  <p>Die pro-Slot-Ladeschritt-Funktion ist <code>0x16fc48</code> → <code>0x381e54</code>, dispatcht vom Work-Queue-Handler über die Auftrags-Callback-Tabelle <code>0x01727E28</code> (Job-Feld <code>+0x2c</code>). Statisches Lesen des eingefrorenen Zustands kann die im Kreis fehlschlagende Bedingung nicht auflösen — dafür braucht es echte Instrumentierung, nicht weitere Rate-Pokes.</p>
+</section>
+
+<section>
+  <h2>Fenster-Patch — fertig, aber gesperrt</h2>
+  <p>Der vollständige 3-Fenster-Patch liegt vor: <strong>48 capstone-verifizierte Wörter</strong> in <code>patch_windows3.sh</code> — 5 Feld-Verlagerungen (<code>window_max</code> +0x2c→+0x28, Zähler +0x30→+0x20), <code>setWindowMax</code> als 14-Wort-Schleife neu gefasst (behandelt jetzt Fenster 0–2), 22 Schleifengrenzen (<code>cmpwi …,8→0x10</code> bzw. <code>…,1→2</code>), 7 nop-Füller.</p>
+  <p><strong>Noch nicht anwendbar.</strong> Zwei harte Voraussetzungen fehlen: (1) ein echtes <strong>Fenster[2]-Objekt</strong> bei <code>+0x2c</code> samt Viewport-Datenblock — ohne das greifen alle Schleifen auf <code>window_max</code> als Zeiger zu und stürzen ab; der Szenen-Konstruktor legt nur zwei an. (2) eine <strong>3-Wege-Kameratabelle</strong> (die 8-Byte-Einträge <code>{0, view-id}</code> sind mit <code>0xffffffff</code> terminiert; voll = 5 Einträge bei <code>0x1784614</code>, 2-Split = 4 bei <code>0x178463c</code>) plus ein <code>&gt;2</code>-Zweig in <code>setupWindows</code>. Und: das dritte Auto muss erst laden, sonst rendert die dritte Ansicht nichts.</p>
+</section>
+
+<section>
+  <h2>Nächster Schritt</h2>
+  <p>Das Raten an Einzel-Verzweigungen ist ausgereizt (zwei Fehlschläge). Der saubere Weg ist Instrumentierung statt Vermutung:</p>
+  <ol class="steps">
+    <li><strong>Handler-Kette instrumentieren.</strong> Einen Code-Cave-Stub setzen, der in <code>0x381e54</code> pro Aufruf für Slot 2 mitschreibt, welcher Zweig genommen wird (<code>[slot+4]</code>, das Ergebnis von <code>0x379bf0</code> vs. slot_count, den Pfad zu 22 vs. 21). Damit sehen wir die dynamische Bedingung, die das Standbild verbirgt — und wissen exakt, was zu ändern ist.</li>
+    <li><strong>Fenster[2] fabrizieren (Test).</strong> Zur Laufzeit den Fenster[1]-Zeiger nach <code>+0x2c</code> duplizieren (nach Verlagerung von <code>window_max</code>), dann <code>patch_windows3.sh apply</code>. Rendert falsch (geteilter Viewport), zeigt aber, ob die 3-fach-Verarbeitung läuft und das Rennen mit drei Einträgen startet.</li>
+  </ol>
+  <p>Beide brauchen, dass das dritte Auto lädt — das bleibt der eine ungelöste Knoten. Alles andere ist kartiert und als Werkzeug vorhanden.</p>
+</section>
+
+<section>
+  <h2>Fenster-Manager — analysiert 3. September</h2>
+  <p>Der Fenster-Manager ist ein Inline-Unterobjekt im RaceScene-Objekt bei <code>Scene+0xa90</code> (nicht die RTTI-Klasse <code>GTParticle::WindowManager</code> — das ist ein anderes, gleichnamiges Partikel-Objekt). Er speichert die Fenster als <strong>feste zwei Inline-Zeiger</strong>, kein Heap-Array mit Zähler:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Offset</th><th>Feld</th></tr></thead>
+      <tbody>
+        <tr><td class="name">+0x1c</td><td>Fenster[0] (Zeiger), +0x20 ungenutztes Wort des 8-Byte-Slots</td></tr>
+        <tr><td class="name">+0x24</td><td>Fenster[1] (Zeiger), +0x28 ungenutztes Wort</td></tr>
+        <tr><td class="name">+0x2c</td><td><strong>window_max</strong> — sitzt genau dort, wo Fenster[2] läge</td></tr>
+        <tr><td class="name">+0x30</td><td>geklemmte Fensterzahl</td></tr>
+        <tr><td class="name">+0x34..0x3a</td><td>View-Modus-Flags</td></tr>
+        <tr><td class="name">+0x44</td><td>bereits nächstes Scene-Feld (lebender Zeiger)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Urteil: kein In-Place-Patch möglich.</strong> Ein drittes Fenster verlangt (1) Verlagerung von <code>window_max</code> + Flags, damit bei <code>+0x2c</code> ein 8-Byte-Slot frei wird; (2) ~23 Codestellen, die die Zwei fest verdrahten — je <code>cmpwi …,8→0x10</code> (Byte-Offset-Schleifen) oder <code>cmpwi …,1→2</code> (Zähler-Schleifen) — plus ein Fenster[2]-Zweig in <code>setWindowMax</code>; (3) ein echtes drittes Fenster­objekt samt Viewport-Datenblock (<code>win+4 → +0xda20/+0xe400</code>), erzeugt per Hook im Szenen-Konstruktor. Die vollständige 23er-Liste liegt vor.</p>
+  <p>Wichtiger: der Fenster-Umbau ist <strong>nicht der Lade-Blocker</strong>. Der eingefrorene Zustand zeigte leere Auftragsschlange bei <code>offen=1</code> — Auftrag 2 wurde genommen, ein Worker hängt in der Handler-Warteschleife (<code>0x394388</code>, wartet auf <code>0x4effa0(element)</code>, bzw. <code>0x394564</code>). Der Fenster-Manager wird fürs Rendern von drei Ansichten gebraucht, schaltet aber das Laden nicht frei.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Adresse</th><th>Funktion</th><th>Anmerkung</th></tr></thead>
+      <tbody>
+        <tr><td class="addr">0x46058C</td><td class="name">setupWindows</td><td>Bound <code>0x460648</code>; Kameratabelle <code>0x1784614</code> voll / <code>+0x28</code> geteilt</td></tr>
+        <tr><td class="addr">0x460814</td><td class="name">setWindowMax</td><td>Schwellen <code>0x460814</code> (n&gt;0) und <code>0x460840</code> (n&gt;1)</td></tr>
+        <tr><td class="addr">0x460780</td><td class="name">setCameraTarget</td><td>keine Bereichsprüfung — würde Fenster[2] korrekt adressieren, läse aber heute <code>window_max</code> als Zeiger → Absturz</td></tr>
+        <tr><td class="addr">0x2284F8 / 0x229310</td><td class="name">externe Iteratoren</td><td>lesen <code>getWindowMax</code> dynamisch — würden eine erhöhte Zahl mittragen</td></tr>
+        <tr><td class="addr">0x238394</td><td class="name">RaceDisp_reset</td><td>läuft bereits vierfach (Stride <code>0x5BC</code>) — HUD-Ebene kann vier</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  Alle Adressen beziehen sich auf das entschlüsselte EBOOT der 2.17-Aktualisierung, geladen ab <code>0x10000</code>. Laufzeitadressen aus dem Testlauf vom 3. September; der Allokator war deterministisch, sie waren über alle Läufe stabil.
+</footer>
+
+</div>

@@ -1,0 +1,6 @@
+oberste Ebene vollständig
+9/9W remote=25 lokal=5 FEHLT
+9/9X remote=25 lokal=3 FEHLT
+9/9Y remote=26 lokal=5 FEHLT
+9/AE remote=26 lokal=1 FEHLT
+Prüfung 9 fertig

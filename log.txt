@@ -1,0 +1,30 @@
+[>] PFS Version/Serial No: '425509359' (26.06.2014 21:02:39)
+[>] Table of Contents Entry Index: 59859
+[>] TOC Size: 0x000BBF26 bytes (0x001214B0 expanded)
+[>] Total Volume Size: 12,7GB
+[>] Title ID: 'GT5-UK-KALAHARI-37863889'
+[-] Reading table of contents.
+[!] Volume Patch Path Table of contents located at: /home/sebastian/gt5re/update/USRDIR/PDIPFS/9/TA/ND
+[-] TOC Entry is 59859 which is at 9/TA/ND - decrypting it
+[-] Decompressing TOC file..
+[>] File names tree offset: 0x000010EC
+[>] File extensions tree offset: 0x00029F20
+[>] Node tree offset: 0x0002A708
+[>] Entry count: 1078.
+[-] Started packing process.
+[-] Indexing files from directory...
+[-] PFS Serial set to today's date -> 810257454 (04.09.2026 23:30:54 +00:00)
+[-] Preparing to pack 3 file(s), and remove 0 file(s)
+[:] Pack: Adding new file to TOC: pack.log (pack.log)
+[:] Entry key for projects/gt5/arcade/arcade.adc changed as new: 59463 -> 59865
+[:] Pack: Compressing + Encrypting projects/gt5/arcade/arcade.adc -> 9/DF/9T
+[:] Entry key for projects/gt5/race/race.adc changed as new: 59474 -> 59866
+[:] Pack: Compressing + Encrypting projects/gt5/race/race.adc -> 9/S3/3J
+[:] Pack: Compressing + Encrypting pack.log -> 9/7T/X6
+[-] Verifying and fixing Table of Contents page sizes if needed
+[/] Page sizes are correct.
+[-] Packing as new: New TOC Entry Index is 59863.
+[-] Saving Table of Contents -> 9/PQ/O3
+[-] Saving Main Volume Header -> K/4D
+[/] Done packing in 00:00:00.3443428.
+Exiting.
