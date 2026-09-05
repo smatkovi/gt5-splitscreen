@@ -278,3 +278,51 @@ PPU-223cc85fc80a6667fae775c7c02f7f65e6b2871f:
       - [ be32, 0x015810a4, 0x997D0018 ]
       - [ be32, 0x015810a8, 0x4AEE10B4 ]
 
+
+  "GT5 3P/4P: MController key config for pads 3 and 4":
+    Games:
+      "Gran Turismo 5":
+        BCES00569: [ 02.17 ]
+    Author: "gt5re"
+    Notes: "gtengine::MController kept only two static per-port handles (0x17fdf70) and its getter 0x48a8f4 returned NULL for port > 1, so pads 3/4 were polled but never mapped to accelerate/brake/steer. Two more handles + config vectors live in the RW segment tail (0x1948600), built by a static-ctor cave (0x1581140, hook 0x48aba8); the getter moved to cave 0x1581100 and accepts ports 0..3. Needs the script mod (declare + setConfig for ports 2/3)."
+    Patch Version: 1.0
+    Patch:
+      - [ be32, 0x0048a8f4, 0x490F680C ]
+      - [ be32, 0x0048aba8, 0x490F6598 ]
+      - [ be32, 0x01581100, 0x2B840003 ]
+      - [ be32, 0x01581104, 0x38600000 ]
+      - [ be32, 0x01581108, 0x419D001C ]
+      - [ be32, 0x0158110c, 0x54831838 ]
+      - [ be32, 0x01581110, 0x2B840001 ]
+      - [ be32, 0x01581114, 0x3D200180 ]
+      - [ be32, 0x01581118, 0x3929DF70 ]
+      - [ be32, 0x0158111c, 0x419D000C ]
+      - [ be32, 0x01581120, 0x7C634A14 ]
+      - [ be32, 0x01581124, 0x4E800020 ]
+      - [ be32, 0x01581128, 0x3D200195 ]
+      - [ be32, 0x0158112c, 0x392985F0 ]
+      - [ be32, 0x01581130, 0x7C634A14 ]
+      - [ be32, 0x01581134, 0x4E800020 ]
+      - [ be32, 0x01581140, 0x4AF09DE5 ]
+      - [ be32, 0x01581144, 0x3C600195 ]
+      - [ be32, 0x01581148, 0x38638610 ]
+      - [ be32, 0x0158114c, 0x3C80016B ]
+      - [ be32, 0x01581150, 0x38846720 ]
+      - [ be32, 0x01581154, 0x4AF0ABDD ]
+      - [ be32, 0x01581158, 0x3C600195 ]
+      - [ be32, 0x0158115c, 0x38638620 ]
+      - [ be32, 0x01581160, 0x3C80016B ]
+      - [ be32, 0x01581164, 0x38846720 ]
+      - [ be32, 0x01581168, 0x4AF0ABC9 ]
+      - [ be32, 0x0158116c, 0x3C600195 ]
+      - [ be32, 0x01581170, 0x38638600 ]
+      - [ be32, 0x01581174, 0x3C800195 ]
+      - [ be32, 0x01581178, 0x38848610 ]
+      - [ be32, 0x0158117c, 0x4AF09DA9 ]
+      - [ be32, 0x01581180, 0x3C600195 ]
+      - [ be32, 0x01581184, 0x38638608 ]
+      - [ be32, 0x01581188, 0x3C800195 ]
+      - [ be32, 0x0158118c, 0x38848620 ]
+      - [ be32, 0x01581190, 0x4AF09D95 ]
+      - [ be32, 0x01581194, 0x4AF09A18 ]
+

@@ -353,3 +353,52 @@ Neue EBOOTs (split3/split4) + Kontroll-SELF `EBOOT_plain_rebuild.BIN` (Original-
 +0x3198/+0x31a4 = Index, +0x31a8 = Renneintrag). Eingabezustand liegt nicht im Kopf (+0x00..0x40 statisch);
 +0xa4 kippte bei gehaltenem Kreuz auf Pad 2 in Objekt 2 UND 0 (bei Pad 0 gar nicht) → nur Hinweis.
 `tools/ps3_padprobe.sh` liest Pad-Manager (primär) + diese Objekte.
+
+### 2026-09-06 00:15–00:50 — Controller 3 steuert nicht: Ursache gefunden (Key-Config nur für Port 0/1)
+
+Hardware-Sonde (Sebastian im 3P-Rennen, ✕ auf Controller 3 gehalten): Pad-Manager 0x18EF8F8 zeigt
+Port 2 `digital2=0040` (✕ kommt an), Ports 0–2 connected, setting 6, capability 0x1F — identisch zu RPCS3.
+Die Spieler-Objekte (0x3270 B, vtable 0x16d4ee8) liegen auf der PS3 **nicht** an den RPCS3-Adressen:
+PS3 idx0 0x4FA76000, idx1 0x4FA48000, idx2 0x4FA28000 (RPCS3: 0x4FA78000/0x4FA6C000/0x4FA48000);
+Sub-Objekte 0x4FE5D690/728/7C0, MOrg-Entries 0x4FF13550.., Fenster-Slots 0x4FFC8300 und Fensterobjekte
+sind auf beiden Systemen gleich. `ps3_padprobe.sh` las daher falsche Objekte (Fixadressen entfernt → Scan).
+
+Pad-Pfad im EBOOT (statisch, gleich auf PS3/RPCS3):
+- 7 Geräteobjekte "PS3SIXAXIS port1..7" an 0x18EFD60 + port·0xE0 (vtable 0x171B108): +0x40 Port, +0x4c Status
+  (2 = aktiv), +0x50 Capability, +0x54 Kopie der CellPadData. Update-Funktion 0xAB280C, Decoder 0xAB2E6C.
+- 4 Handles "SuperPort SIXAXIS Fixed1..4" an 0x18F3F0C + i·0xC (vtable 0x171B230) → Gerät i.
+  Lookup `getSuperPort(i)` 0xAB63C4 erlaubt i ≤ 3. MOrg-Entry i → +0x2c → Wrapper 0x18F3CE8 + i·0xC.
+  ⇒ Die Engine-Seite kann 4 Pads; hier liegt der Fehler nicht.
+- Nachtest im Emulator: F2 (Pad 3 ✕) erreicht Pad-Manager Port 2 und Gerät 2 (data 0x40), aber das
+  Spieler-Objekt idx2 ändert sich nicht (Wortdiff 84 vs. 85 Kontrolle); n (Pad 2) → idx1 138, x (Pad 1) → idx0 140.
+  **Der Fehler tritt also auch in RPCS3 auf** — die frühere Aussage „alle Pads lenken" war falsch.
+- Ursache: `scripts/gt5/global_status/GameOption.ad`, `DeclareControllers()`: `declare_play_normal(controller,
+  "SIXAXIS", 2, …)` deklariert die Tastenkanäle nur für `port < 2`; `bootstrap_phase3.ad` behandelt ebenfalls
+  nur `controller_port < 2`. `gtengine::MController` (Natives 0x9AEB0 declare / 0x9AD98 getConfig / 0x9A38C
+  setConfig, Singleton via 0x98D7C) hat für Port 2/3 keine Belegung → Eingaben werden nicht auf Gas/Lenkung
+  abgebildet.
+- Fix (Adhoc, `patch_arcade_v3.py` → createSplitBattle): für Ports ≥ 2 alle SIXAXIS-Kanäle deklarieren und
+  `key_config.setConfig(key_config.getConfig(0), port)`. Build `mod_kc` (MOD_WINDOW_MAX=4), Test im Emulator läuft.
+
+**Test mod_kc im Emulator (00:48)**: Absturz beim Rennstart, `Access violation reading 0x4` in 0x9B114
+(native `MController::declare`). Der Wrapper holt über 0x98D7C → 0x48B15C den Controller-Kontext (statisches
+Aggregat 0x17FDF60, Registry „GT-ALL") und ruft dessen vtable-Slot 0x10 = **0x48A8F4 `getHandle(port)`**:
+`cmplwi r4,1; bgt → 0` sonst `0x17FDF70 + port*8`. Die C++-Seite hat also nur **zwei statische Port-Handles**
+{vtable 0x16EB0B0, &Konfig-Vektor}; die Konfig-Vektoren (0x10 B, je 3 InputModes à 0x14 B mit Geräte-Listen)
+liegen im Kontextobjekt (+0x24/+0x34), gebaut vom statischen Ctor 0x48A9D4 (Vektor-Ctor 0x48BD30 mit vtable
+0x16B6720, Handle-Init 0x48AF24). Einzige Zugriffe auf die Slots: der Getter (+ Ctor/Dtor).
+→ Der Adhoc-Fix allein reicht nicht; `declare(…, port=2, …)` crasht, und die Fahrer-Eingabe für Port 2/3 findet
+ebenfalls keine Konfiguration. **EBOOT-Patch `keycfg4`** (`tools/gen_keycfg4.py` → `keycfg4_words.txt`, 38 W):
+zwei weitere Handles + Vektoren im ungenutzten Rest des RW-Datensegments (memsz endet 0x19485B0, Seite bis
+0x1950000 gemappt; NEW = 0x1948600), Ctor-Cave 0x1581140 (Hook 0x48ABA8) baut sie mit 0x48BD30/0x48AF24,
+Getter komplett in Cave 0x1581100 (Hook 0x48A8F4 → `b`), erlaubt Port ≤ 3, Port 2/3 → NEW. Test-EBOOT
+`eboot/out/EBOOT_test_keycfg4.BIN` (viewport + entries4 + win4 + keycfg4) im Emulator, Mod mod_kc aktiv.
+
+**Emulator-Test keycfg4 + mod_kc (01:02) — Controller 3 steuert.** Statische Ctor-Cave hat die neuen Handles
+gebaut (0x1948600: {016EB0B0, 01948610}, {016EB0B0, 01948620}, Vektoren mit je 3 InputModes wie Port 0/1).
+Mod-Log: „keyconfig: SIXAXIS declared and port 0 config copied to port 2", kein Absturz, `load_sequence
+finished`. Spieler-Objekte diesmal an 0x4FA74000/0x4FA68000/0x4FA32000 (Heap-Layout variiert je Lauf → Scan
+nach vtable 0x16D4EE8 statt Fixadressen). Wortdiff je Objekt (idx0, idx1, idx2), Kontrolle [84, 47, 88]:
+F2 (Pad 3 ✕) → [84, 52, **173**], F7 (Pad 3 Stick rechts) → [87, 83, **247**], n (Pad 2) → [84, **132**, 62],
+x (Pad 1) → [**165**, 161, 63]. Bildvergleich bei 6 s F2: Fenster 3 (unten rechts) 59 % Pixel geändert,
+Fenster 1 0,5 % → Pad 3 fährt das Auto in Fenster 3. Belege `doc/emu_3p_pad3_*.png`.

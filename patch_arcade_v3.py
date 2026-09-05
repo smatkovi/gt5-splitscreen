@@ -135,6 +135,33 @@ new_create = r'''    // --- 4P split patch: how many players take part in this s
             i++;
         }
 
+        // --- 4P split patch: key configuration for controller ports 2 and 3.
+        // GameOption::DeclareControllers() declares the pad channels for ports 0 and 1 only,
+        // so pads 3/4 are polled by the engine but never mapped to accelerate/brake/steer.
+        // Declare the SIXAXIS channels for the extra ports and give them player 1's config.
+        if (ports.size > 2)
+        {
+            var kc = GAME_STATUS.user_profile.option.key_config;
+            var cfg0 = kc.getConfig(0);
+            var mode = main::gtengine::InputMode::PLAY_NORMAL;
+            var buttons = ["UP", "DOWN", "LEFT", "RIGHT", "CIRCLE", "CROSS", "TRIANGLE", "SQUARE",
+                           "L1", "R1", "L2", "R2", "L3", "R3", "START", "SELECT"];
+            var analogs = ["PRESS_UP", "PRESS_DOWN", "PRESS_LEFT", "PRESS_RIGHT", "PRESS_CIRCLE", "PRESS_CROSS",
+                           "PRESS_TRIANGLE", "PRESS_SQUARE", "PRESS_L1", "PRESS_R1", "PRESS_L2", "PRESS_R2",
+                           "STICK_BY1F", "STICK_BY1L", "STICK_BX1", "STICK_BX1F", "STICK_BX1L",
+                           "STICK_BY2F", "STICK_BY2L", "STICK_BX2", "STICK_BX2F", "STICK_BX2L"];
+            for (var k = 2; k < ports.size; k++)
+            {
+                var kport = ports[k];
+                foreach (var bname in buttons)
+                    kc.declare(mode, "SIXAXIS", kport, "button", main::pdistd::SuperPortButtonBit[bname]);
+                foreach (var aname in analogs)
+                    kc.declare(mode, "SIXAXIS", kport, "analog", main::pdistd::SuperPortAnalogChannel[aname]);
+                kc.setConfig(cfg0, kport);
+                modlog("keyconfig: SIXAXIS declared and port 0 config copied to port " + kport.toString());
+            }
+        }
+
         var gp;
         if (course_data_holder.is_edit_course_)
         {

@@ -23,14 +23,22 @@ for r in $(seq 1 "$ROUNDS"); do
         len=$((16#${H:0:8})); b1=${H:12:4}; d1=${H:16:4}; d2=${H:20:4}
         printf 'round %d port %d: len=%-3d button[1]=%s digital1=%s digital2=%s sticks=%s %s %s %s\n' $r $p $len $b1 $d1 $d2 ${H:24:4} ${H:28:4} ${H:32:4} ${H:36:4}
     done
-    # per-player objects (deterministic heap addresses, identical in RPCS3 and on the console):
-    # +0x34 = player index, +0x0c..+0x18 input state bits, +0x3198/+0x31a4 index, +0x31a8 race entry
-    for i in 0 1 2; do
-        case $i in 0) O=0x4FA78000;; 1) O=0x4FA6C000;; 2) O=0x4FA48000;; esac
-        H=$(rd $O 64); F=$(rd $(printf '0x%08X' $((O + 0xa0))) 12)
-        # +0xa4 flipped 0 -> 1 in RPCS3 while pad 2 held cross (in player 2 AND player 0 objects, not with pad 0) -
-        # ambiguous, treat as a hint only; the pad-manager rows above are the primary evidence
-        [ -n "$H" ] && echo "player $i obj $O: accel-flag(+0xa4)=${F:8:8} hdr: $(words "$H")" || echo "player $i obj $O: <read failed>"
+    # per-player objects (0x3270 bytes, vtable 0x016D4EE8): the heap addresses differ between the
+    # console and RPCS3 (PS3: 0x4FA76000/0x4FA48000/0x4FA28000 for idx 0/1/2 in one run), so they are
+    # located once by scanning page-aligned candidates for the vtable.  +0x34 = player index,
+    # +0x2c = per-player sub-object (name etc.), +0xf0 = acceleration vector (pure gravity = car at rest).
+    if [ -z "$PLAYERS" ]; then
+        PLAYERS=""
+        for ((a=0x4F980000; a<0x4FB00000; a+=0x1000)); do
+            H=$(rd $(printf '0x%08X' $a) 56)
+            [ "${H:0:8}" = "016D4EE8" ] && PLAYERS="$PLAYERS $(printf '0x%08X' $a):$((16#${H:104:8}))"
+        done
+        echo "player objects (addr:idx):$PLAYERS"
+    fi
+    for pi in $PLAYERS; do
+        O=${pi%%:*}; i=${pi##*:}
+        H=$(rd $O 64); F=$(rd $(printf '0x%08X' $((O + 0xf0))) 16)
+        [ -n "$H" ] && echo "player idx$i obj $O: accel(+0xf0)=${F:0:8} ${F:8:8} ${F:16:8} hdr: $(words "$H")" || echo "player idx$i obj $O: <read failed>"
     done
     sleep 2
 done

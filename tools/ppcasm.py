@@ -46,6 +46,24 @@ def beq(pc, target, crf=7): return bc(pc, 12, crf * 4 + 2, target)
 def blt(pc, target, crf=7): return bc(pc, 12, crf * 4 + 0, target)
 
 
+def cmplwi(crf, ra, imm):
+    assert 0 <= imm <= 0xffff
+    return (10 << 26) | (crf << 23) | (ra << 16) | imm
+
+
+def rlwinm(ra, rs, sh, mb, me):
+    return (21 << 26) | (rs << 21) | (ra << 16) | (sh << 11) | (mb << 6) | (me << 1)
+
+
+def slwi(ra, rs, n): return rlwinm(ra, rs, n, 0, 31 - n)
+
+
+def bgt(pc, target, crf=7): return bc(pc, 12, crf * 4 + 1, target)
+
+
+def blr(): return 0x4e800020
+
+
 def dis(addr, word):
     ins = list(_md.disasm(word.to_bytes(4, 'big'), addr))
     return f'{ins[0].mnemonic} {ins[0].op_str}' if ins else '???'

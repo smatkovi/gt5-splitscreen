@@ -3,20 +3,23 @@
 RAM patch + Adhoc script mod that turns the 2-player "2P Split Screen" arcade mode into a
 4-player race (four viewports in quadrants, four human-controlled cars on controller ports 0-3).
 
-Status (2026-09-05): **verified in RPCS3** (0.0.42-19916, LLVM PPU, ASMJIT SPU) — four views in a
-quadrant layout, four cars, all four pads steer their car, ~47 FPS, no crash through the race.
-**PS3 hardware test still pending** (see "Testing on the PS3").
+Status (2026-09-06): **verified in RPCS3** (0.0.42-19916, LLVM PPU, ASMJIT SPU) — four views in a
+quadrant layout, four cars, no crash through the race. Pad 3 steering its own car (3-player race) was
+confirmed by memory diffs of the per-player objects and by the view following the input
+(`doc/emu_3p_pad3_accel_2026-09-06.png`, `doc/emu_3p_pad3_steer_2026-09-06.png`).
+**PS3 hardware test of the pad-3 fix still pending**; the earlier EBOOT (without item 4 below) showed
+the views and cars on the console but controller 3 could not drive. See "Testing on the PS3".
 
 ## What is in here
 
 | file | purpose |
 |------|---------|
-| `EBOOT.BIN` | **patched, re-encrypted 2.17 update EBOOT** (NPDRM UEXEC, key revision 0x19, licence FREE, unsigned) — the PS3 deliverable |
+| `EBOOT.BIN` | **patched, re-encrypted 2.17 update EBOOT** (NPDRM UEXEC, key revision 0x19, licence FREE, unsigned) — the PS3 deliverable, 288 patched words |
 | `EBOOT_patched.elf` | the decrypted patched ELF the EBOOT was built from (`tools/build_eboot.sh`), `SHA1SUMS` |
 | `rpcs3-patch.yml` | RPCS3 patch groups (`~/.config/rpcs3/patches/patch.yml`), key `PPU-223cc85f…` |
 | `deploy_4p.sh` | PS3 RAM-poke script (`apply\|off\|verify`) — **only useful for `verify`**, see below |
 | `words.txt` | every patched word: address, original, new, capstone disassembly of both |
-| `mod/openadhoc-split.diff` | Adhoc script changes against the OpenAdhoc GT5 sources (arcade + race projects) |
+| `mod/openadhoc-split.diff` | Adhoc script changes against the OpenAdhoc GT5 sources (arcade + race projects), incl. the key-config setup for pads 3/4 |
 | `mod/arcade.adc`, `mod/race.adc` | compiled scripts |
 | `mod/pdipfs/` | packed PDIPFS overlay (header/TOC + the two scripts) for `USRDIR/PDIPFS/` |
 
@@ -27,7 +30,7 @@ sha1 `306f86c62b9f03041c903be96ac59e5c3f130452`).
 
 The engine already carries three players through the whole loading chain (that part is the
 script mod: `createSplitBattle` builds 2..4 entries, each with its own `MCarDriverParameter`
-and controller port, and sets `window_max` to the number of human players, clamped to 4 — the same script build serves the 3P and 4P releases). Two engine structures were hard-wired to two:
+and controller port, and sets `window_max` to the number of human players, clamped to 4 — the same script build serves the 3P and 4P releases). Three engine structures were hard-wired to two:
 
 1. **MOrganizer player entries.** The organizer object (0x35030 bytes, allocated at 0x177110)
    holds an inline array of two 0x290-byte player-entry objects at +0x2b8. Creating the third
@@ -47,6 +50,20 @@ and controller port, and sets `window_max` to the number of human players, clamp
    is rewritten as a loop over four windows. Direct reads of windows 0/1 are unchanged.
 3. **Viewport count.** `0x379c30` / `0x37b250`: the "+2 human players" constant becomes +4.
    (The 3P release uses +3; everything else is identical.)
+4. **Controller key configuration for pads 3 and 4.** `gtengine::MController` (the object
+   behind `GAME_STATUS.user_profile.option.key_config`) keeps its per-port button/analog
+   mappings in a static context (0x17fdf60) with exactly **two** port handles (0x17fdf70 +
+   port*8); the getter `0x48a8f4` returns NULL for port > 1. The engine polled pads 3/4 fine
+   (pad manager 0x18ef8f8, device objects 0x18efd60 + port*0xe0, `SuperPort SIXAXIS Fixed1..4`
+   handles 0x18f3f0c), but nothing mapped their buttons to accelerate/brake/steer — on the PS3
+   controller 3 drove nothing, and (contrary to the first release notes) the same was true in
+   RPCS3. The patch places two more handles plus their config vectors in the unused tail of the
+   RW data segment (0x1948600; the segment's memsz ends at 0x19485b0 inside a page mapped up to
+   0x1950000), builds them in a static-constructor cave (0x1581140, hook 0x48aba8, same
+   constructors 0x48bd30/0x48af24 as ports 0/1) and moves the getter into cave 0x1581100 where
+   it accepts ports 0..3. The script side (`DeclareControllers()` in `GameOption.ad` only declares
+   ports 0/1) is completed by the mod: `createSplitBattle` declares all SIXAXIS channels for the
+   extra ports and copies player 1's configuration to them (`key_config.setConfig(getConfig(0), port)`).
 
 Not needed any more: the earlier load fix ("cave4") — the slot-2 reset it worked around was a
 consequence of (1).
@@ -70,17 +87,19 @@ creates that object at game start (`bootstrap_phase2.ad: main::ORG = gtengine::M
 Poking the words into a running game therefore leaves the arrays uninitialised: the first race
 after a warm `apply` hung on the console (attract-mode demo, 2026-09-05). The patch has to be in
 the code before boot, i.e. in the EBOOT. `deploy_4p.sh verify` is still handy to confirm that a
-running game carries the patched words (`patched=250`).
+running game carries the patched words (`patched=288`).
 
 ## Testing on the PS3
 
 1. Back up `/dev_hdd0/game/BCES00569/USRDIR/EBOOT.BIN` (the original 2.17 update EBOOT,
    9505120 bytes, sha1 of its decrypted form `306f86c6…0452`).
 2. Upload this folder's `EBOOT.BIN` to `/dev_hdd0/game/BCES00569/USRDIR/EBOOT.BIN` (FTP).
-   The script mod (`mod/pdipfs/*`) must be in `USRDIR/PDIPFS/` as before.
+   Upload the script mod as well: every file under `mod/pdipfs/` goes to the same relative path
+   under `/dev_hdd0/game/BCES00569/USRDIR/PDIPFS/` (the key-config setup lives in this build of
+   `arcade.adc`; an older overlay makes controller 3 dead again).
 3. Start GT5 from the XMB. If the console refuses the SELF (error 80010007) the SELF type/key
    revision is not accepted by this firmware — report the error code.
-4. (Optional) `PS3={ip} ./deploy_4p.sh verify` → expect `patched=250 original=0 unexpected=0`.
+4. (Optional) `PS3={ip} ./deploy_4p.sh verify` → expect `patched=288 original=0 unexpected=0`.
 5. Arcade → 2P Split Screen → track → cars → options → "Spieler 3 (Controller 3) faehrt mit?"
    **Yes**, "Spieler 4" **Yes** → race. Do not idle in the main menu (the attract demo also
    exercises the race code).

@@ -41,3 +41,4 @@ key.json
 !release/**/*.adc
 !release/**/mod/pdipfs/**
 /tmp/
+__pycache__/
