@@ -412,3 +412,12 @@ Bildvergleich Pad 4: Fenster 4 (unten rechts) 59 %, Fenster 2 71 % (gerammt), Fe
 Beleg `doc/emu_4p_pad4_accel_2026-09-06.png`. Release-Ordner 3p/4p aktualisiert, Commit 178ac64.
 Nächster Schritt: PS3 — `release/3p/EBOOT.BIN` + `release/3p/mod/pdipfs/*` hochladen
 (`tools/deploy_ps3_release.sh`, erst nach Sebastians Freigabe), Hardware-Test, dann Tag 3p-v1.
+
+## 2026-09-06 01:20 — Hardware-Test 3P bestanden
+
+Sebastian: GT5 beendet, `tools/deploy_ps3_release.sh release/3p` (EBOOT.BIN 9477184 B + 5 Overlay-Dateien,
+alle Größen ok), GT5 gestartet, 3P-Rennen: **„ja p3 kann steuern und fahren"** — drei Ansichten, drei Autos,
+Controller 3 fährt Auto 3. Fern-`verify` (288 Wörter über webMAN getmem) lief während des Rennens in den 10-min-Timeout — nicht wiederholt,
+Sebastians Fahrtest ist der Beleg.
+Damit ist Auftrag 3 (3-Spieler-Splitscreen auf der PS3) erfüllt → Tag `3p-v1`.
+Offen: 4P-Hardware-Test mit `release/4p` (gleiches Upload-Skript, vier Controller nötig), dann Tag `4p-v1`.

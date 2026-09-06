@@ -3,12 +3,11 @@
 RAM patch + Adhoc script mod that turns the 2-player "2P Split Screen" arcade mode into a
 3-player race (three viewports, three human-controlled cars on controller ports 0/1/2).
 
-Status (2026-09-06): **verified in RPCS3** (0.0.42-19916, LLVM PPU, ASMJIT SPU) — three views in a
-quadrant layout, three cars, no crash through the race. Pad 3 steering its own car was
-confirmed by memory diffs of the per-player objects and by the view following the input
-(`doc/emu_3p_pad3_accel_2026-09-06.png`, `doc/emu_3p_pad3_steer_2026-09-06.png`).
-**PS3 hardware test of the pad-3 fix still pending**; the earlier EBOOT (without item 4 below) showed
-three views and cars on the console but controller 3 could not drive. See "Testing on the PS3".
+Status (2026-09-06): **verified on the PS3** (CFW, webMAN MOD 1.47.48) and in RPCS3 (0.0.42-19916):
+three views in a quadrant layout, three cars, controller 3 drives the third car, no crash through
+the race. Emulator evidence: memory diffs of the per-player objects and the view following the
+input (`doc/emu_3p_pad3_accel_2026-09-06.png`, `doc/emu_3p_pad3_steer_2026-09-06.png`).
+Release tag `3p-v1`.
 
 ## What is in here
 
@@ -89,6 +88,9 @@ the code before boot, i.e. in the EBOOT. `deploy_3p.sh verify` is still handy to
 running game carries the patched words (`patched=288`).
 
 ## Testing on the PS3
+
+`tools/deploy_ps3_release.sh release/3p` (in the repository) does steps 1-2 over webMAN FTP with a
+size check; the manual way:
 
 1. Back up `/dev_hdd0/game/BCES00569/USRDIR/EBOOT.BIN` (the original 2.17 update EBOOT,
    9505120 bytes, sha1 of its decrypted form `306f86c6…0452`).
