@@ -421,3 +421,12 @@ Controller 3 fährt Auto 3. Fern-`verify` (288 Wörter über webMAN getmem) lief
 Sebastians Fahrtest ist der Beleg.
 Damit ist Auftrag 3 (3-Spieler-Splitscreen auf der PS3) erfüllt → Tag `3p-v1`.
 Offen: 4P-Hardware-Test mit `release/4p` (gleiches Upload-Skript, vier Controller nötig), dann Tag `4p-v1`.
+
+## 2026-09-06 (früh) — Hardware-Test 4P bestanden
+
+Erster Upload-Versuch scheiterte, weil die PS3 aus/nicht erreichbar war (Skript meldete fälschlich „kein
+Backup" → Skript korrigiert, 1be9b09). Zweiter Versuch: `deploy_ps3_release.sh release/4p`, alle 6 Dateien ok.
+Sebastian: **„p3 und p4 können steuern"** → vier Ansichten, vier Autos, Controller 3 und 4 fahren → Tag `4p-v1`.
+
+Neue Wünsche von Sebastian: (1) Autoauswahl auch für Spieler 3 und 4, (2) Streckenkarte in allen vier
+Ansichten, (3) Tachometer ausblenden.
