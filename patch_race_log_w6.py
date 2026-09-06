@@ -176,3 +176,52 @@ if 'log4p_poll' not in r:
     r = r.replace(a3, poll + a3, 1)
     open(root, 'w', encoding='utf-8').write(r)
     print('patched', root)
+
+# ---------------------------------------------------------------- experiment: onboard mounts via changeSpectatorCamera
+# MOD_VIEW_EXPERIMENT=1: TRIANGLE on pad 1 cycles CHASE/BONNET/INCAR/DRIVER for window 0 through the
+# spectator-camera API, to test whether the in-car views can be forced in split-screen races.
+if os.environ.get('MOD_VIEW_EXPERIMENT') == '1':
+    r = open(root, encoding='utf-8').read()
+    a = "            if (!gSequenceCondition.disable_replay_menu && !gSequenceCondition.is_online && event.keysym == PS2_PAD_CTRL_SELECT)\n"
+    assert r.count(a) == 1
+    r = r.replace(a, """            log4p("key event: keysym=" + event.keysym.toString());
+            if (event.keysym == PS2_PAD_CTRL_SELECT && main::RaceOperator.window_max >= 3)
+            {
+                sModMountIdx = (sModMountIdx + 1) % 4;
+                var mounts = [gtengine::CameraOnboardMount::CHASE, gtengine::CameraOnboardMount::BONNET,
+                              gtengine::CameraOnboardMount::INCAR, gtengine::CameraOnboardMount::DRIVER];
+                ORG.changeSpectatorCamera(gtengine::CameraType::ONBOARD, mounts[sModMountIdx], 0);
+                log4p("view experiment: mount index " + sModMountIdx.toString());
+                return EVENTRESULT_FILTER;
+            }
+
+""" + a)
+    # timed camera switches from the start-condition poll thread (t = 6/12/18/24 s after session start)
+    a3 = """            if (ORG.inSession() && ORG.inCourseAllEntries())
+                break;
+"""
+    assert r.count(a3) == 1
+    r = r.replace(a3, """            if (main::RaceOperator.window_max >= 3 && (n == 6 || n == 12 || n == 18 || n == 24))
+            {
+                var mounts = [gtengine::CameraOnboardMount::DRIVER, gtengine::CameraOnboardMount::INCAR,
+                              gtengine::CameraOnboardMount::BONNET, gtengine::CameraOnboardMount::CHASE];
+                var idx = (n == 6) ? 0 : (n == 12) ? 1 : (n == 18) ? 2 : 3;
+                ORG.changeSpectatorCamera(gtengine::CameraType::ONBOARD, mounts[idx], 0);
+                log4p("view experiment: spectator onboard mount index " + idx.toString() + " at t=" + n.toString());
+            }
+            if (n >= 26 && ORG.inSession() && ORG.inCourseAllEntries())
+                break;
+""")
+    a2 = "    static sViewChangeWatcher = nil;\n"
+    assert r.count(a2) == 1
+    r = r.replace(a2, a2 + "    static sModMountIdx = 0;   // 4P split patch experiment\n")
+    open(root, 'w', encoding='utf-8').write(r)
+    print('view experiment hook added', root)
+    # and once at the end of the load sequence: request the cockpit (DRIVER) mount for window 0
+    lu = open(loadutil, encoding='utf-8').read()
+    a4 = 'log4p("LU: load_sequence finished");'
+    assert lu.count(a4) == 1
+    if 'view experiment: DRIVER' not in lu:
+        lu = lu.replace(a4, a4 + ' main::ORG.changeSpectatorCamera(main::gtengine::CameraType::ONBOARD, main::gtengine::CameraOnboardMount::DRIVER, 0); log4p("view experiment: DRIVER mount requested for window 0");')
+        open(loadutil, 'w', encoding='utf-8').write(lu)
+        print('view experiment: DRIVER mount at end of load sequence')

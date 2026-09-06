@@ -28,9 +28,11 @@ while :; do
         nosignin) press X; sleep 4 ;;
         demo)     press X; sleep 5 ;;
         menubar|menubar2) seen_menu=1; press Right; sleep 1; press X; sleep 10 ;;
-        arcade)   press Right Right Right; sleep 1; press X; sleep 8 ;;
+        arcade)   # MODE=single -> first arcade item (Single Race, 1 player); default: 2P Split Screen
+                  if [ "${MODE:-split}" = single ]; then press X; else press Right Right Right; sleep 1; press X; fi; sleep 8 ;;
         track)    press X; sleep 8 ;;
         car)      # round 1: players 1/2 pick the default car; round 2 (after the player dialogs) again for players 3/4
+                  # (MODE=single: the same X presses walk through the 1P car select)
                   # (both rounds are operated by pads 1/2; in round 2 they pick for players 3/4)
                   case $car_step in
                     0) press X; sleep 4 ;;

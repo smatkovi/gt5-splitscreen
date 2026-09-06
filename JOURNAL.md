@@ -462,3 +462,25 @@ Spieler-1-Dialog mit Rennoptionen (Runden, Low-mu, Schaden) und hätte über den
 (`player_no == 0 && mod_round == 1`) und in CarSplitRoot (gleiche Bedingung). Emulator: beide Runde-2-Dialoge
 zeigen nur Spieler-Einstellungen (Screenshots r2_2/r2_4). Der Dialogtitel sagt weiter „player 1/2" (aus
 `window_id`, das auch die Pane-Position bestimmt; Setting-Projekt, nicht Teil der Mod) — kosmetisch.
+
+## 2026-09-06 06:35–07:30 — Innenansichten (Cockpit/Windschutzscheibe) im Split-Modus: Analyse
+
+- SELECT wechselt im Split-Rennen für jeden Spieler das eigene Fenster (Bildvergleich: Pad 2 → TR, Pad 3 → BL,
+  Pad 4 → BR), aber nur zwischen zwei Sichten. Kamera-Kontext pro Fenster: `*(window+4)` (0x422BE000,
+  0x4230E000, 0x4231E000, 0x4232E000; Fensterliste via MOrg+0x2c0). Sichtindex/Mount im Kontext bei
+  +0x174/+0x17c (Kopien +0xDB84/+0xDB8C, +0xE1E4/+0xE1EC): Split: Index 3↔0 (Mount 2↔0, Typ 1↔0);
+  1P-Rennen: Index 0,1,2,3 (Mount 0,1,3,2; Typ 0,26,6,1) → im Split fehlen genau Index 1/2 = Mount 1/3 =
+  INCAR (Windschutzscheibe) und DRIVER (Cockpit).
+- Engine-Pfad: SELECT → Pad-Modul (Key-Config-Button 0x20) → Kamera-Kontext+0xE3C0 Flags (0x48A05C) →
+  Sichtwechsel 0x467A14: Zähler `table->vt[+0x1c]`, Sicht per Index `0x46432C`, Zulässigkeit `0x464460`
+  (Bitmaske aus vier virtuellen Methoden des Sichtobjekts), Anwenden `0x467488`. Wo die Liste im Split
+  gekürzt wird (Liste bauen / Zulässigkeit), ist noch nicht gefunden; Kandidaten-Scans (li r4 0/1/3/2,
+  Bit-4-Tests, WM window_max-Leser) ohne Treffer. Klassen: ChaseViewCamera(2), PSPBonnetViewCamera,
+  InCarCamera, DriverCamera, BackViewCamera (vtables 0x16EAC18..0x16EAD08), CameraOnboard 0x16EADD0.
+- Skript-Umweg getestet (`MOD_VIEW_EXPERIMENT=1` in patch_race_log_w6.py): `ORG.changeSpectatorCamera(ONBOARD,
+  DRIVER, 0)` am Ende des Ladevorgangs wird ausgeführt (Log), ändert die Sicht aber nicht; Tastenereignisse
+  (TRIANGLE/SELECT) erreichen `RaceRoot.onKeyPress` während der Fahrt nicht (kein „key event"-Log);
+  der Poll-Thread loggt in diesem Build nicht (Ursache unklar). → Ein reiner Skript-Weg fällt aus, es braucht
+  einen EBOOT-Patch an der (noch zu findenden) Listen-/Zulässigkeitslogik. Aufwand offen, dazu Renderlast
+  von 3–4 Cockpits auf der PS3 unklar.
+- Nebenprodukte: `tools/nav.sh` kennt `MODE=single` (1P-Rennen) und den Zustand `okdialog`.
