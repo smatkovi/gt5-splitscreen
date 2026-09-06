@@ -12,15 +12,20 @@ BASE="ftp://$PS3/dev_hdd0/game/BCES00569/USRDIR"
 if curl -s --max-time 10 "http://$PS3/home.ps3mapi" | grep -qiE 'proc=0x[0-9a-f]+'; then
     echo "a game process is running on the PS3 - quit GT5 first (XMB), then rerun." >&2; exit 2
 fi
-curl -s --max-time 15 "$BASE/" | grep -q 'EBOOT.BIN.orig' || { echo "no EBOOT.BIN.orig backup on the console - refusing" >&2; exit 3; }
+# the FTP listing is retried: webMAN's FTP server drops connections while the console is busy
+LIST=""; for n in 1 2 3; do LIST=$(curl -s --max-time 40 "$BASE/") && [ -n "$LIST" ] && break; sleep 3; done
+[ -n "$LIST" ] || { echo "cannot list $BASE - is the console on and webMAN's FTP reachable? (ping $PS3, http://$PS3/)" >&2; exit 3; }
+grep -q 'EBOOT.BIN.orig' <<<"$LIST" || { echo "no EBOOT.BIN.orig backup on the console - refusing" >&2; exit 3; }
 up() {  # up <local> <remote-path-below-USRDIR>
     local f="$1" r="$2" n=0
     while :; do
         curl -s --max-time 300 --ftp-create-dirs -T "$f" "$BASE/$r" && break
         n=$((n+1)); [ $n -ge 3 ] && { echo "upload failed: $r" >&2; exit 4; }; sleep 2
     done
-    local want have; want=$(stat -c %s "$f")
-    have=$(curl -s --max-time 15 "$BASE/$(dirname "$r")/" | awk -v b="$(basename "$r")" '$NF==b {print $5}')
+    local want; want=$(stat -c %s "$f")
+    local have=""; for n in 1 2 3; do
+        have=$(curl -s --max-time 40 "$BASE/$(dirname "$r")/" | awk -v b="$(basename "$r")" '$NF==b {print $5}') && [ -n "$have" ] && break; sleep 3
+    done
     printf '  %-28s %9s bytes  %s\n' "$r" "$want" "$([ "$want" = "$have" ] && echo ok || echo "SIZE MISMATCH (console has $have)")"
     [ "$want" = "$have" ]
 }
