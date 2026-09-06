@@ -70,6 +70,8 @@ and controller port, and sets `window_max` to the number of human players, clamp
   join, the split car select opens a second time for players 3 (left pane) and 4 (right pane);
   controller 1 operates the left pane and controller 2 the right one (the menu contexts are bound
   to pads 1/2 by the engine; binding them to pads 3/4 via `event_mask` made the panes deaf).
+  Players 3/4 get the per-player driving options (transmission, tyres, assists) like player 2;
+  the race-wide settings (laps, low-mu, damage) stay with player 1 in round 1.
   Players 1/2 are remembered and restored afterwards (`rememberSplitPlayers/restoreSplitPlayers`),
   `createSplitBattle` uses the remembered cars and drivers; the spare-car fallback stays for safety.
 - **Quadrant HUD** (`OnboardMeterRoot.ad`, `patch_hud_quad.py`): with 3 or 4 windows every window

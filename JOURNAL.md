@@ -455,3 +455,10 @@ Autos laden also problemlos (die frühere „eigenes Modell nötig"-Annahme stam
 Pads im Rennen: KP_Multiply → idx3 100 (Kontrolle 6), F2 → idx2 100; Kollisions-Nebenwirkungen wie zuvor.
 HUD-Korrektur (Rundenzeit nach (250,100)) im selben Build. Release-Ordner 3p/4p aktualisiert (mod aus mod_sel),
 Belege `doc/emu_4p_quad_hud_2026-09-06.png`.
+
+**Optionsdialoge für Spieler 3/4 (06:20–06:30)**: In Runde 2 bekam die linke Seite (player_no 0) den
+Spieler-1-Dialog mit Rennoptionen (Runden, Low-mu, Schaden) und hätte über den `player_num == 0`-Zweig in
+`CarSplitRoot.cb_selected_car` die Renneinstellungen von Spieler 1 überschrieben. Fix in `setup_driving_option`
+(`player_no == 0 && mod_round == 1`) und in CarSplitRoot (gleiche Bedingung). Emulator: beide Runde-2-Dialoge
+zeigen nur Spieler-Einstellungen (Screenshots r2_2/r2_4). Der Dialogtitel sagt weiter „player 1/2" (aus
+`window_id`, das auch die Pane-Position bestimmt; Setting-Projekt, nicht Teil der Mod) — kosmetisch.

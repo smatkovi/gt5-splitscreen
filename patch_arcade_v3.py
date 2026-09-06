@@ -259,6 +259,38 @@ src = src.replace(old_exec, new_exec)
 # went deaf to every pad (the mask bits are not pad ports).  The panes therefore keep their normal
 # masks (5/10): in round 2 controller 1 picks for player 3 (left pane), controller 2 for player 4.
 
+# ---------------------------------------------------------------- 3b. driving-option dialog in round 2
+# Player 1's dialog also carries the race-wide settings (laps, low-mu, damage).  In car-select round 2
+# the left pane is player 3, so both panes get the per-player dialog (like player 2's).
+old_do = """                case gtengine::GameMode::SPLIT_BATTLE:
+                    {
+                        if (player_no == 0) {
+"""
+assert src.count(old_do) == 1
+src = src.replace(old_do, """                case gtengine::GameMode::SPLIT_BATTLE:
+                    {
+                        // 4P split patch, round 2: per-player settings only
+                        if (player_no == 0 && mod_round == 1) {
+""")
+
+# ---------------------------------------------------------------- 3c. CarSplitRoot: race settings only from player 1 in round 1
+csr_path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), 'CarSplitRoot.ad')
+csr = open(csr_path, encoding='utf-8').read()
+old_csr = """                    if (player_num == 0)
+                    {
+                        var rp = gp.event.race_parameter;
+                        GAME_STATUS.user_profile.option.arcade_laps = rp.race_limit_laps;
+"""
+if 'mod_round' not in csr:
+    assert csr.count(old_csr) == 1
+    csr = csr.replace(old_csr, """                    if (player_num == 0 && ArcadeProject::mod_round == 1)   // 4P split patch
+                    {
+                        var rp = gp.event.race_parameter;
+                        GAME_STATUS.user_profile.option.arcade_laps = rp.race_limit_laps;
+""")
+    open(csr_path, 'w', encoding='utf-8').write(csr)
+    print('patched', csr_path)
+
 # ---------------------------------------------------------------- 4. CarSplitBaseRoot: second car-select round
 import os
 csb_path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), 'CarSplitBaseRoot.ad')

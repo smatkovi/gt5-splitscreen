@@ -87,9 +87,18 @@ index 1a99e70..cb48ae6 100644
                      if (res)
                      {
 diff --git a/src/projects/gt5/arcade/CarSplitRoot.ad b/src/projects/gt5/arcade/CarSplitRoot.ad
-index b2a7024..fba335c 100644
+index b2a7024..476be40 100644
 --- a/src/projects/gt5/arcade/CarSplitRoot.ad
 +++ b/src/projects/gt5/arcade/CarSplitRoot.ad
+@@ -462,7 +462,7 @@ module CarSplitRoot
+                     }
+                 
+                 
+-                    if (player_num == 0)
++                    if (player_num == 0 && ArcadeProject::mod_round == 1)   // 4P split patch
+                     {
+                         var rp = gp.event.race_parameter;
+                         GAME_STATUS.user_profile.option.arcade_laps = rp.race_limit_laps;
 @@ -668,6 +668,8 @@ module CarSplitRoot
                      if (tab_id == TAB_TYPE::FAVORITE)
                      {
@@ -100,10 +109,20 @@ index b2a7024..fba335c 100644
                          if (course_is_dirt)
                          {
 diff --git a/src/projects/gt5/arcade/arcade.ad b/src/projects/gt5/arcade/arcade.ad
-index 5fafd72..1565e31 100644
+index 5fafd72..41bb9b0 100644
 --- a/src/projects/gt5/arcade/arcade.ad
 +++ b/src/projects/gt5/arcade/arcade.ad
-@@ -1037,21 +1037,184 @@ module PROJECT
+@@ -744,7 +744,8 @@ module PROJECT
+ 
+                 case gtengine::GameMode::SPLIT_BATTLE:
+                     {
+-                        if (player_no == 0) {
++                        // 4P split patch, round 2: per-player settings only
++                        if (player_no == 0 && mod_round == 1) {
+                             data.visible_laps = true;
+                             data.laps_min = 1;
+                             data.visible_low_mu_type = true;
+@@ -1037,21 +1038,184 @@ module PROJECT
          return gp;
      }
  
@@ -294,7 +313,7 @@ index 5fafd72..1565e31 100644
  
              {
                  var course_pathway_bin;
-@@ -1067,7 +1230,7 @@ module PROJECT
+@@ -1067,7 +1231,7 @@ module PROJECT
          }
          else
          {
@@ -303,7 +322,7 @@ index 5fafd72..1565e31 100644
          }
  
          gp.event.race_parameter.low_mu_type = GAME_STATUS.user_profile.context.arcade_low_mu_type;
-@@ -1241,6 +1404,16 @@ module PROJECT
+@@ -1241,6 +1405,16 @@ module PROJECT
  
          var result = GameParameterUtil::executeArcade(context, gp, GAME_STATUS, driving_option);
  
