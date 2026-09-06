@@ -63,11 +63,25 @@ and controller port, and sets `window_max` to the number of human players, clamp
    ports 0/1) is completed by the mod: `createSplitBattle` declares all SIXAXIS channels for the
    extra ports and copies player 1's configuration to them (`key_config.setConfig(getConfig(0), port)`).
 
+**Script mod, second iteration (2026-09-06):**
+
+- **Car selection for players 3 and 4.** After players 1/2 have chosen their cars in the split car
+  select, the mod asks "Spieler 3 (Controller 3) faehrt mit?" / "Spieler 4 ...". If more players
+  join, the split car select opens a second time for players 3 (left pane) and 4 (right pane);
+  controller 1 operates the left pane and controller 2 the right one (the menu contexts are bound
+  to pads 1/2 by the engine; binding them to pads 3/4 via `event_mask` made the panes deaf).
+  Players 1/2 are remembered and restored afterwards (`rememberSplitPlayers/restoreSplitPlayers`),
+  `createSplitBattle` uses the remembered cars and drivers; the spare-car fallback stays for safety.
+- **Quadrant HUD** (`OnboardMeterRoot.ad`, `patch_hud_quad.py`): with 3 or 4 windows every window
+  gets position, lap, timers and its own course map; 4 windows = TL/TR/BL/BR, 3 windows = TL/BL/BR.
+  The speedometer/rev counter/gear panel is hidden in this layout (requested); the standings list is
+  not shown. 2-player races keep the original HUD.
+
 Not needed any more: the earlier load fix ("cave4") — the slot-2 reset it worked around was a
 consequence of (1).
 
-Known cosmetic issues: the HUD (speedometer/gear) still uses the 2-window layout and sits over
-the bottom two views; the top-right quadrant only shows the race timer and standings.
+Known cosmetic issues: a small course preview strip sits at the top centre of each window; the
+"Player:1/2" labels of the split car select are not renamed in the second round.
 
 ## How it was tested
 
@@ -101,8 +115,8 @@ size check; the manual way:
 3. Start GT5 from the XMB. If the console refuses the SELF (error 80010007) the SELF type/key
    revision is not accepted by this firmware — report the error code.
 4. (Optional) `PS3={ip} ./deploy_3p.sh verify` → expect `patched=288 original=0 unexpected=0`.
-5. Arcade → 2P Split Screen → track → cars → options → "Spieler 3 (Controller 3) faehrt mit?"
-   **Yes**, "Spieler 4" **No** → race. Do not idle in the main menu (the attract demo also
+5. Arcade → 2P Split Screen → track → cars (players 1/2) → "Spieler 3 (Controller 3) faehrt mit?"
+   **Yes**, "Spieler 4" **No** → OK → car for player 3 (left pane, controller 1) → options → race. Do not idle in the main menu (the attract demo also
    exercises the race code).
 6. Expected: three views, three cars, controller 3 drives the third car.
 7. Back out by restoring the backed-up EBOOT.BIN.

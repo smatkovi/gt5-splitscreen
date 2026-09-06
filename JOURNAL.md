@@ -430,3 +430,28 @@ Sebastian: **„p3 und p4 können steuern"** → vier Ansichten, vier Autos, Con
 
 Neue Wünsche von Sebastian: (1) Autoauswahl auch für Spieler 3 und 4, (2) Streckenkarte in allen vier
 Ansichten, (3) Tachometer ausblenden.
+
+## 2026-09-06 05:40–06:15 — HUD in Quadranten, Autoauswahl für Spieler 3/4
+
+- `patch_hud_quad.py` (OnboardMeterRoot.ad): neuer Zweig `sWinN >= 3` — Fenster 0 behält die ROOT-Widgets,
+  Fenster 1..3 bekommen Kopien in `DivWork` + weiteren Containern (`sQuadDivs`, einmal erzeugt, wiederverwendet)
+  an ihrer Quadranten-Position (4 Fenster TL,TR,BL,BR; 3 Fenster TL,BL,BR). Jedes Fenster ruft
+  `CourseMapFace.begin(…, k)` und `RaceDisplayFace.begin(…, k)`; Tacho/Drehzahl/Gang aus (`Parette` unsichtbar,
+  `carmeter_disp = false`). Emulator 4P (mod_hud): Karte + Position/Runde/Zeiten in allen vier Fenstern, kein Tacho,
+  kein Absturz (`doc/…` folgt). Kosmetik: Rundenzeit (Info::Current) überlappte „Total Time" → nach (250,100)
+  verschoben; ein Vorschaustreifen (Widget noch nicht identifiziert) sitzt mittig oben in jedem Fenster.
+- Autoauswahl: `CarSplitBaseRoot.check_page_status` fragt nach Runde 1 („Spieler 3/4 fährt mit?"), merkt sich
+  Spieler 1/2 (`rememberSplitPlayers`), schließt die Seiten und startet die Split-Autowahl als Runde 2 für
+  Spieler 3/4; danach `restoreSplitPlayers` (Slots 0/1 zurück auf Spieler 1/2). `createSplitBattle` nimmt die
+  gemerkten Autos/Fahrer (`mod_cars/mod_drivers`), Ersatzauto nur noch als Fallback.
+- Versuch, die Panes in Runde 2 per `event_mask = 4/8` an Pad 3/4 zu binden: beide Panes taub für alle Pads
+  (Maskenbits ≠ Pad-Ports) → zurück auf 5/10: Controller 1 wählt für Spieler 3, Controller 2 für Spieler 4.
+  Sub-Kontexte: `Context1P/2P = ContextMain.getSubContext(0/1)`; native `getSubContext` 0x57C668 → 0x5653A0.
+
+**Emulator-Test mod_sel (06:16)**: Runde 1 (Pads 1/2) → Dialoge P3 ja / P4 ja → Hinweis-Dialog (OK; braucht einen
+längeren Tastendruck, Navigator-Zustand `okdialog` ergänzt) → Runde 2 → Optionen → Rennen: 4 Einträge, alle mit den
+in Runde 2 gewählten Autos (code 1536 statt Ersatzwagen 1388), `load_sequence finished`, kein Absturz — vier gleiche
+Autos laden also problemlos (die frühere „eigenes Modell nötig"-Annahme stammte aus der Zeit der kaputten Entries).
+Pads im Rennen: KP_Multiply → idx3 100 (Kontrolle 6), F2 → idx2 100; Kollisions-Nebenwirkungen wie zuvor.
+HUD-Korrektur (Rundenzeit nach (250,100)) im selben Build. Release-Ordner 3p/4p aktualisiert (mod aus mod_sel),
+Belege `doc/emu_4p_quad_hud_2026-09-06.png`.

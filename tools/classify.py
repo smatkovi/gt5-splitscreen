@@ -23,6 +23,7 @@ GEOM = {
     'demo':     ((990, 590, 160, 60), 0.08),
     'menubar':  ((730, 600, 50, 50), 0.13),
     'menubar2': ((955, 600, 50, 50), 0.13),
+    'okdialog': ((600, 470, 80, 20), 0.05),   # confirmation dialog with a single OK button (mod round-2 notice)
 }
 ORDER = list(GEOM)
 

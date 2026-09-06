@@ -11,6 +11,81 @@ index 8d27dc7..dab7e03 100644
                          if (course_is_dirt)
                          {
                              if (cp.isHavingParts(gtengine::CarPartsType::FRONT_TIRE, gtengine::PARTS_TIRE::DIRT_A) ||
+diff --git a/src/projects/gt5/arcade/CarSplitBaseRoot.ad b/src/projects/gt5/arcade/CarSplitBaseRoot.ad
+index 1a99e70..cb48ae6 100644
+--- a/src/projects/gt5/arcade/CarSplitBaseRoot.ad
++++ b/src/projects/gt5/arcade/CarSplitBaseRoot.ad
+@@ -25,6 +25,7 @@ module CarSplitBaseRoot
+ 
+     method close(context)
+     {
++        ArcadeProject::mod_round = 1;
+         ArcadeProject::ignorePadEvent(true, true);
+ 
+         foreach (var root in Context1P.getPageList().reverse())
+@@ -46,6 +47,12 @@ module CarSplitBaseRoot
+     {
+         OverLapRoot::ButtonHelpGT5.onSplitCarSelect();
+ 
++        // --- 4P split patch: a fresh car select starts with round 1
++        ArcadeProject::mod_round = 1;
++        ArcadeProject::mod_ports = nil;
++        ArcadeProject::mod_cars = [];
++        ArcadeProject::mod_drivers = [];
++
+         ArcadeProject::ignorePadEvent(true);
+ 
+         pdistd::MGamePort::SetWheelAssignMode(pdistd::WheelAssignMode::CONSOLE);
+@@ -126,9 +133,47 @@ module CarSplitBaseRoot
+             if (root1 != nil && root2 != nil)
+             {
+ 
+-                if (root1.defined("ready") && root1.ready &&
+-                    root2.defined("ready") && root2.ready)
++                var ready1 = root1.defined("ready") && root1.ready;
++                var ready2 = root2.defined("ready") && root2.ready;
++                // --- 4P split patch: in round 2 with three players only pane 1 (player 3) counts
++                if (ArcadeProject::mod_round == 2 && ArcadeProject::mod_ports.size == 3)
++                    ready2 = true;
++                if (ready1 && ready2)
+                 {
++                    if (ArcadeProject::mod_round == 1)
++                    {
++                        // players 1/2 have chosen: remember them, then ask who else plays
++                        ArcadeProject::rememberSplitPlayers(0, 2);
++                        ArcadeProject::mod_ports = ArcadeProject::getSplitPlayerPorts(context);
++                        if (ArcadeProject::mod_ports.size > 2)
++                        {
++                            ArcadeProject::mod_round = 2;
++                            ArcadeProject::modlog("car select round 2 for " + (ArcadeProject::mod_ports.size - 2).toString() + " player(s)");
++                            ArcadeProject::ignorePadEvent(true, true);
++                            foreach (var root in Context1P.getPageList().reverse())
++                                root.close(Context1P);
++                            foreach (var root in Context2P.getPageList().reverse())
++                                root.close(Context2P);
++                            context.sync(2.0);
++                            Context1P.clearPage();
++                            Context2P.clearPage();
++                            var msg = (ArcadeProject::mod_ports.size == 3)
++                                ? "Auto fuer Spieler 3 waehlen (linke Seite, Controller 1 bedient)."
++                                : "Autos fuer Spieler 3 (links, Controller 1 bedient) und Spieler 4 (rechts, Controller 2 bedient) waehlen.";
++                            DialogUtil::openConfirmDialog(context, DialogUtil::OK, msg);
++                            thread_ = Thread(self.event_pad_mask, context);
++                            thread_.start();
++                            effect_end_func(context);
++                            break;   // event_pad_mask starts a new check_page_status thread
++                        }
++                    }
++                    else
++                    {
++                        // round 2 done: slots 0/1 now hold players 3/4; restore players 1/2
++                        ArcadeProject::rememberSplitPlayers(0, ArcadeProject::mod_ports.size - 2);
++                        ArcadeProject::restoreSplitPlayers();
++                        ArcadeProject::mod_round = 1;
++                    }
+                     var res = gArcadeSequence.moveNextPage(context);
+                     if (res)
+                     {
 diff --git a/src/projects/gt5/arcade/CarSplitRoot.ad b/src/projects/gt5/arcade/CarSplitRoot.ad
 index b2a7024..fba335c 100644
 --- a/src/projects/gt5/arcade/CarSplitRoot.ad
@@ -25,10 +100,10 @@ index b2a7024..fba335c 100644
                          if (course_is_dirt)
                          {
 diff --git a/src/projects/gt5/arcade/arcade.ad b/src/projects/gt5/arcade/arcade.ad
-index 5fafd72..acaedfe 100644
+index 5fafd72..1565e31 100644
 --- a/src/projects/gt5/arcade/arcade.ad
 +++ b/src/projects/gt5/arcade/arcade.ad
-@@ -1037,21 +1037,147 @@ module PROJECT
+@@ -1037,21 +1037,184 @@ module PROJECT
          return gp;
      }
  
@@ -40,6 +115,35 @@ index 5fafd72..acaedfe 100644
 +    {
 +        mod_log_buf = mod_log_buf + text + "\n";
 +        pdistd::WriteFile("/APP_DATA_RAW/4pmod.log", mod_log_buf.getByteData());
++    }
++
++    // --- 4P split patch: state shared between the split car select (CarSplitBaseRoot) and
++    // createSplitBattle.  Round 1 of the car select is players 1/2, round 2 players 3/4.
++    static mod_round = 1;
++    static mod_ports = nil;        // controller ports of the entered players, set after round 1
++    static mod_cars = [];          // MCarParameter per entered player (deep copies)
++    static mod_drivers = [];       // MCarDriverParameter per entered player (deep copies)
++
++    function rememberSplitPlayers(first_slot, count)
++    {
++        for (var i = 0; i < count; i++)
++        {
++            var c = gtengine::MCarParameter();
++            c.deepCopy(GAME_STATUS.user_profile.context.getArcadeCar(first_slot + i));
++            mod_cars.push(c);
++            var d = gtengine::MCarDriverParameter();
++            d.deepCopy(GAME_STATUS.user_profile.residence.getArcadePlayer(first_slot + i));
++            mod_drivers.push(d);
++        }
++    }
++
++    function restoreSplitPlayers()
++    {
++        for (var i = 0; i < 2 && i < mod_cars.size; i++)
++        {
++            GAME_STATUS.user_profile.context.setArcadeCar(mod_cars[i], i);
++            GAME_STATUS.user_profile.residence.setArcadePlayer(i, mod_drivers[i]);
++        }
 +    }
 +
 +    function getSplitPlayerPorts(context)
@@ -91,20 +195,27 @@ index 5fafd72..acaedfe 100644
      {
 -        var cp0 = GAME_STATUS.user_profile.context.getArcadeCar(0);
 -        var dp0 = GAME_STATUS.user_profile.residence.getArcadePlayer(0);
-+        var ports = getSplitPlayerPorts(context);
++        var ports = (mod_ports != nil) ? mod_ports : getSplitPlayerPorts(context);
  
 -        var cp1 = GAME_STATUS.user_profile.context.getArcadeCar(1);
 -        var dp1 = GAME_STATUS.user_profile.residence.getArcadePlayer(1);
 +        var cp_list = [];
 +        var dp_list = [];
- 
--        dp0.display_name = dp0.display_name + "[1]";
++
 +        var i = 0;
 +        foreach (var port in ports)
 +        {
 +            var cp;
 +            var dp;
-+            if (i < 2)
++            if (mod_cars.size > i && mod_drivers.size > i)
++            {
++                // chosen in the split car select (round 1: players 1/2, round 2: players 3/4)
++                cp = mod_cars[i];
++                dp = mod_drivers[i];
++                if (i >= 2)
++                    dp.setPlayer(port);
++            }
++            else if (i < 2)
 +            {
 +                // players 1 and 2: car and driver chosen in the split car select, as before
 +                cp = GAME_STATUS.user_profile.context.getArcadeCar(i);
@@ -145,7 +256,8 @@ index 5fafd72..acaedfe 100644
 +            dp_list.push(dp);
 +            i++;
 +        }
-+
+ 
+-        dp0.display_name = dp0.display_name + "[1]";
 +        // --- 4P split patch: key configuration for controller ports 2 and 3.
 +        // GameOption::DeclareControllers() declares the pad channels for ports 0 and 1 only,
 +        // so pads 3/4 are polled by the engine but never mapped to accelerate/brake/steer.
@@ -182,7 +294,7 @@ index 5fafd72..acaedfe 100644
  
              {
                  var course_pathway_bin;
-@@ -1067,7 +1193,7 @@ module PROJECT
+@@ -1067,7 +1230,7 @@ module PROJECT
          }
          else
          {
@@ -191,7 +303,7 @@ index 5fafd72..acaedfe 100644
          }
  
          gp.event.race_parameter.low_mu_type = GAME_STATUS.user_profile.context.arcade_low_mu_type;
-@@ -1241,6 +1367,16 @@ module PROJECT
+@@ -1241,6 +1404,16 @@ module PROJECT
  
          var result = GameParameterUtil::executeArcade(context, gp, GAME_STATUS, driving_option);
  
@@ -315,6 +427,122 @@ index d5177ae..544db9c 100644
          }
  
          if (progress != nil)
+diff --git a/src/projects/gt5/race/OnboardMeterRoot.ad b/src/projects/gt5/race/OnboardMeterRoot.ad
+index c529382..f1fa6a0 100644
+--- a/src/projects/gt5/race/OnboardMeterRoot.ad
++++ b/src/projects/gt5/race/OnboardMeterRoot.ad
+@@ -53,6 +53,21 @@ module ROOT
+         [Parette::Tacho,         1, 1546, 414]
+     ];
+ 
++    // --- 4P split patch: HUD positions inside one 960x540 quadrant window
++    static sLayoutQuad = [
++        [Info::SectionTime,      250, 140],
++        [Info::DiffTime,         250, 165],
++        [Info::Current,          250, 100],
++        [WongWay,                462, 150],
++        [Adjuster,               366, 160],
++        [InfoLeft::RacePosition, 30, 16],
++        [InfoLeft::LapNumber,    258, 16],
++        [MapClip,                10, 60],
++        [InfoRight::TotalTime,   586, 16],
++        [InfoRight::BestLap,     586, 108]
++    ];
++    static sQuadDivs = [];
++
+     static sRacerCol = [
+         menu::MColorObject(212.0 / 0xFF, 212.0 / 0xFF, 212.0 / 0xFF, 1.0),
+         menu::MColorObject(220.0 / 0xFF, 172.0 / 0xFF, 30.0 / 0xFF, 1.0)
+@@ -461,6 +476,80 @@ module ROOT
+             DivWork.RaceDisplayFace.begin(ORG, DivWork, 1, RaceRoot::Info);
+             DivWork.RaceDisplayFace.dispmode = OP.racedisplay_view_mode;
+         }
++        else if (sWinN >= 3)
++        {
++            // --- 4P split patch: quadrant layout for 3 or 4 windows.
++            MapClip.window_size = [220, 220];
++            InfoRight::LastLap.visible = false;
++            InfoRight::RacerPane.visible = false;
++            Parette::Gmonitor.visible = false;
++            Parette::Boost.visible = false;
++            Parette::Input.visible = false;
++            Parette::Gas.visible = false;
++            Parette::Tire.visible = false;
++            Panel.visible = false;
++
++            foreach (var W in sLayoutQuad)
++            {
++                var B = W[0];
++                B.x = W[1].toFloat();
++                B.y = W[2].toFloat();
++            }
++
++            var wlist = [
++                RaceDisplayFace,
++                MapClip,
++                Info,
++                InfoLeft,
++                InfoRight,
++                Parette,
++                Adjuster,
++                WongWay
++            ];
++
++            // containers for windows 1..3: DivWork plus copies of it, created once and reused
++            var containers = [DivWork];
++            while (sQuadDivs.size < sWinN - 2)
++            {
++                var ND = DivWork.doCopy();
++                ROOT.appendChild(context, ND);
++                sQuadDivs.push(ND);
++            }
++            for (var k = 0; k < sWinN - 2; k++)
++                containers.push(sQuadDivs[k]);
++
++            for (var k = 1; k < sWinN; k++)
++            {
++                var D = containers[k - 1];
++                D.clearWindow(context);
++                foreach (var W in wlist)
++                {
++                    var A = W.doCopy();
++                    D.appendChild(context, A);
++                }
++                // window order: 4 windows = TL, TR, BL, BR; 3 windows = TL, BL, BR
++                var q = (sWinN == 3) ? k + 1 : k;
++                D.x = (q == 1 || q == 3) ? 960.0 : 0.0;
++                D.y = (q >= 2) ? 540.0 : 0.0;
++                D.visible = true;
++            }
++
++            MapClip::CourseMapFace.begin(ORG, MapClip, MapClip::ComCar, OP.race_map_view_mode, map_scale, 0);
++            RaceDisplayFace.begin(ORG, ROOT, 0, RaceRoot::Info);
++            RaceDisplayFace.dispmode = OP.racedisplay_view_mode;
++            RaceDisplayFace.carmeter_disp = false;
++            Parette.visible = false;
++
++            for (var k = 1; k < sWinN; k++)
++            {
++                var D = containers[k - 1];
++                D.MapClip::CourseMapFace.begin(ORG, D.MapClip, D.MapClip::ComCar, OP.race_map_view_mode, map_scale, k);
++                D.RaceDisplayFace.begin(ORG, D, k, RaceRoot::Info);
++                D.RaceDisplayFace.dispmode = OP.racedisplay_view_mode;
++                D.RaceDisplayFace.carmeter_disp = false;
++                D.Parette.visible = false;
++            }
++        }
+         else
+         {
+             InfoRight::RacerPane.initialize(context, DriverName);
+@@ -554,6 +643,8 @@ module ROOT
+         InfoRight::RacerPane.finalize(context);
+         InfoRight::LastLap.clearWindow(context);
+         DivWork.clearWindow(context);
++        foreach (var QD in sQuadDivs)
++            QD.clearWindow(context);
+ 
+         if (preserved_signed_out_inner_pad_right != -1)
+         {
 diff --git a/src/projects/gt5/race/RaceRoot.ad b/src/projects/gt5/race/RaceRoot.ad
 index 9fff4c7..eb9d6c3 100644
 --- a/src/projects/gt5/race/RaceRoot.ad
