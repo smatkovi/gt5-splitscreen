@@ -42,3 +42,8 @@ key.json
 !release/**/mod/pdipfs/**
 /tmp/
 __pycache__/
+
+# never publish: Sony key material and anything derived from the game executable
+tools/scetool_keys.txt
+/installer/build/
+/installer/*.pkg
