@@ -23,6 +23,19 @@ It contains **no part of Gran Turismo 5**. No EBOOT, no disc data, no decryption
 patched executable is built on your own machine, from your own copy of the game, by
 `installer/build_pkg.sh`. Without that copy nothing here produces a runnable game.
 
+## The short way: one command
+
+If the console is on the network and running webMAN, this fetches your own EBOOT from it,
+builds the package and puts it back on the console ready to install:
+
+```sh
+export PSL1GHT=/usr/local/ps3dev
+PS3=192.168.0.2 installer/build_and_install.sh 4p
+```
+
+Nothing about the game leaves your network: the EBOOT is read from your console and the
+package built from it goes straight back to the same console.
+
 ## Building your own installer package
 
 You need a PS3 with CFW or HEN, your own copy of GT5 with **update 2.17** installed, a
