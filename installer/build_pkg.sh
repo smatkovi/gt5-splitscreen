@@ -131,6 +131,9 @@ EOF
 fi
 
 echo "== building package =="
+# make only tracks the installer binary, not the staged payload, so a rebuild with a
+# fresh payload would otherwise be skipped as up to date.
+rm -f "$BASE/installer/gt5-$VARIANT-installer.pkg"
 make -C "$BASE/installer" VARIANT="$VARIANT" pkg
 
 OUT="$BASE/installer/gt5-$VARIANT-installer.pkg"
