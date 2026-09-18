@@ -22,7 +22,7 @@ These rules come from Sebastian and apply to every session in this directory.
 ## Downloads
 - Large downloads (firmware PUP, AppImages, ISOs) use `aria2c`, not curl/wget.
 
-## PS3 hardware (192.168.1.11, webMAN MOD 1.47.48 + PS3MAPI)
+## PS3 hardware (192.168.0.2 via LAN cable since 2026-09-06; was 192.168.1.11 on WLAN; webMAN MOD 1.47.48 + PS3MAPI)
 - The console is the reference state. **Never change anything on it without saying so first.**
 - Reading (getmem, FTP download) is allowed at any time.
 - Code pokes only take effect when set **cold in the main menu** (I-cache).

@@ -484,3 +484,236 @@ zeigen nur Spieler-Einstellungen (Screenshots r2_2/r2_4). Der Dialogtitel sagt w
   einen EBOOT-Patch an der (noch zu findenden) Listen-/Zulässigkeitslogik. Aufwand offen, dazu Renderlast
   von 3–4 Cockpits auf der PS3 unklar.
 - Nebenprodukte: `tools/nav.sh` kennt `MODE=single` (1P-Rennen) und den Zustand `okdialog`.
+
+## 2026-09-06 09:20 - PS3 freeze when mounting a game (read-only diagnosis, console 192.168.1.11)
+
+Sebastian: every game freezes when mounted via webMAN MOD 1.47.48 (CFW 4.92 Cobra 8.5); last case
+LittleBigPlanet Karting; console ran all night. Nothing on the console was changed.
+
+Findings (PS3 clock is wrong: it shows 2025-06-08 while the real date is 2026-09-06; times below are
+console time, offset about +6h16m to real time):
+- `wmtmp/last_game.txt` 02:48:12 = LBP Karting mount; `/dev_hdd0/tmp/turnoff` (created by VSH at boot)
+  02:49:03 = next boot. So the console was restarted 51 s after the mount. `crash_report/vsh` dir
+  mtime 02:49 (empty) = a VSH crash report was written and consumed -> VSH crash, not a kernel hang.
+- A physical disc (NFS Carbon BLES00020) is in the drive. `/dev_bdvd` lists the real disc;
+  `/dev_hdd0/tmp/game/ICON0.PNG` (XMB disc icon cache, 02:49:05) is byte-identical to the NFS Carbon
+  ICON0. webMAN's cpursx line "/dev_bdvd -> <iso>" only echoes last_game.txt (cpursx.h:699), it does
+  not prove a mount. Cobra source (storage_ext.c mount_ps3_discfile): with a real disc inserted
+  `total_emulation = 0` and the real PS3 disc keeps `effective_disctype` -> ISO mount + real PS3 disc
+  is an unsupported mixed state. Prime suspect.
+- Thermal: CPU 76 C / RSX 73 C at 24 % fan before the reboot (fan control "Auto at 80 C", min 25 %);
+  69-70 C at 27 % right after boot. Secondary suspect, needs fixing anyway.
+- `/dev_hdd0/PS3ISO` holds 4367 `.dkey` files (full redump key set) next to 23 ISOs; 13 ISOs are
+  encrypted redump images with matching keys (LBP Karting: EBOOT.BIN sector 0x65c19d is in the
+  encrypted region, dkey present). Slows every scan, not a freeze cause by itself.
+- VSH plugins: webftp_server.sprx (1.47.48 full) + psnpatch.sprx. No game process running.
+  Startup counters: 2,767 ON / 2,704 OFF (63 improper shutdowns). 10.1 GB free.
+- Sebastian confirmed: all games freeze, LBP Karting last; console ran all night.
+
+Proposed (needs his OK, changes the console): eject the disc, then mount LBP Karting via the web UI
+while pinging; lower fan target to 65-70 C / min 40-45 %; move the unused .dkey files out of PS3ISO;
+fix the clock.
+
+### 2026-09-06 09:45 - follow-up: disc theory dropped, dkey files moved
+
+- Sebastian: the freeze also happens without a disc in the drive (tested earlier by him).
+- With his OK: moved 4572 unused `.dkey` files from `/dev_hdd0/PS3ISO` to `/dev_hdd0/dkeys/`
+  (FTP RNFR/RNTO, 157 s, 0 failures). 15 dkeys whose ISO exists stayed in PS3ISO. Full listing
+  showed 4620 entries (the earlier curl LIST was truncated at 4397): 28 ISOs, 3 CUE, 2 PNG.
+  `LittleBigPlanet2.iso` is a 134 MB fragment (2026-05-24), `BCES00850 - Little Big Planet 2.iso`
+  (20.6 GB) is the complete one.
+- webMAN GitHub issues checked: #1279 (freeze 4.92.2 + 1.47.48 with encrypted ISO + key, Cobra
+  side), #1386 (freeze while loading ISO, overheating message), #1303 - aldostools' standard advice:
+  test with fan control in SYSCON/manual mode (dynamic fan control can freeze), remove other
+  plugins (here psnpatch.sprx), clean reinstall.
+- Temperatures 24 min after boot: CPU 69 C / RSX 67 C at 27 % fan.
+- Prepared `tools/ps3_mount_probe.sh` (mount via /mount.ps3 while logging ping/HTTP/temps/bdvd);
+  not run yet - needs Sebastian's OK because it mounts a game.
+
+### 2026-09-06 09:40 - freeze tests 1+2 by Sebastian, psnpatch disabled
+
+- Test 1 (Sebastian, XMB mount, dynamic fan): freeze again -> hard reset.
+- Test 2 (Sebastian set fan to manual 40 %, then mounted again): freeze again -> hard reset.
+  My remote mount probe (tools/ps3_mount_probe.sh) was not run - he mounted himself both times.
+- Console change with his OK: `/dev_hdd0/boot_plugins.txt` now has `#/dev_hdd0/plugins/psnpatch.sprx`
+  (Cobra load_boot_plugins passes every non-blank line to prx_load_vsh_plugin, so the '#' line simply
+  fails to load). Original saved as `/dev_hdd0/boot_plugins.txt.orig` and locally in the job tmp dir.
+  Restarted via /restart.ps3 at 09:39; back after ~30 s; PS3MAPI plugin list: slot 1 webftp_server
+  only, slot 2 NULL. Fan still manual 40 %.
+- Next: Sebastian mounts again (test 3, without psnpatch). If it still freezes: clean reinstall of
+  webMAN MOD (uninstall pkg, reboot, install 1.47.48 again) or test with the plugin unloaded
+  (`/unloadprx.ps3`? no: use `L3+R2+R3` UNLOAD WM combo) and mount via multiMAN.
+
+### 2026-09-06 09:50 - webMAN clean reinstall (remote) - plugin was NOT corrupt
+
+Sebastian: test 3 (psnpatch disabled, manual fan 40 %) also froze on mount. Asked me to do the
+uninstall + reinstall. A true uninstall would sever remote access (no FTP/HTTP without webMAN), so
+did a clean reinstall over the top instead:
+- Downloaded official webMAN_MOD_1.47.48_Installer.pkg (15187040 B, aria2c) from aldostools' GitHub
+  release. content id EP0001-UPDWEBMOD_00-..., 4626 items.
+- Backed up running /dev_hdd0/plugins/webftp_server.sprx locally (sha1 f88f9f31...) and as
+  webftp_server.sprx.bak on the console.
+- Uploaded pkg to /dev_hdd0/packages/, installed via `http://PS3/install_ps3/<pkg>` -> extracted fresh
+  to /dev_hdd0/game/UPDWEBMOD (all mtimes -> 03:34).
+- KEY FINDING: fresh USRDIR/webftp_server_full.sprx is byte-identical to the running plugin
+  (both sha1 f88f9f31c1110147d4afa25e699a57a284903da6, 352353 B). The active webMAN was already the
+  pristine official file -> webMAN was not corrupt, a reinstall cannot change the mount freeze.
+- Rebooted via /restart.ps3; back in ~35 s. Slots: only webftp_server (psnpatch stays off). Fan 40 %.
+
+Conclusion: freeze reproduced with dynamic fan, manual fan, psnpatch off, and now on a verified-
+pristine webMAN. webMAN only calls Cobra's mount syscall; the hang is at Cobra/CFW or hardware level.
+Real next steps (all need Sebastian, none remote-safe): reflash/repair the CFW (4.92 Evilnat Cobra
+8.5) PUP; full cold shutdown + dust/thermal-paste (149 d uptime, ~70 C); test booting the physical
+NFS Carbon disc directly vs a mounted ISO to split drive vs Cobra emulation.
+
+### 2026-09-06 10:15 - CFW 4.93 Evilnat Cobra 8.5 [CEX] prepared for reflash
+
+Sebastian chose to reflash the CFW (webMAN ruled out) and to go to 4.93 instead of 4.92.2.
+- Source: Evilnat's official MEGA folder (linked by brewology post p=4840 by aldostools and by
+  consolecrunch): "CFW Evilnat 4.93/CEX/CFW 4.93 Evilnat Cobra 8.5 [CEX].rar", 215766279 B, folder
+  marker "Updated 31-03-2026". Downloaded with a small Python MEGA public-folder client
+  (job tmp/mega_public.py, pycryptodome added to ~/gt5re/.venv). rar test OK.
+- PS3UPDAT.PUP 215764316 B, md5 d3af31ce6bdbc6790a5504cf8b3da1b2 = bundled md5.txt; sha1
+  5075240b714dbb789005a1ed0918e76df9fcc5d2; header SCEUF, version.txt "4.93 Evilnat [CEX]", 9 entries.
+  (archive.org third-party copy Evilnat_4.93_CEX.PUP md5 a69ec3b1... is an older build.)
+- Extracted to ~/Downloads/CFW-4.93-Evilnat-CEX/ (README.txt, md5.txt, PS3/UPDATE/PS3UPDAT.PUP).
+- Note: GitHub account "EviInat" (capital I) mimics Evilnat; brewology's github.com/Evilnat link is
+  dead; Evilnat's real GitHub is xXEvilnatXx (Cobra-PS3, xai_plugin, flash-writer). Not used.
+- USB sticks: first Intenso Micro Line (USB 2.0) was NTFS with 5.6 GB of his data -> not touched.
+  Second Intenso Micro Line (serial ...0558, bcdUSB 2.00, 480 Mbit/s, MBR, FAT32, 22 MB used) ->
+  PS3/UPDATE/PS3UPDAT.PUP copied, md5 verified on the stick, unmounted.
+- Console prep before flashing: eject NFS disc, nothing mounted, fan manual 40 %, psnpatch off.
+
+### 2026-09-06 12:45 - PS3 now on 4.93 Evilnat Cobra 8.5 (Sebastian flashed it), webMAN 1.47.48 alive
+
+cpursx.ps3 (read-only): "Firmware: 4.93 CEX Cobra 8.5", webMAN 1.47.48s MOD, uptime 40 min, CPU 69 C / RSX 67 C.
+Next: Sebastian mounts a game to see whether the freeze is gone.
+
+### 2026-09-06 11:30 - freeze persists on 4.93; webMAN downgrade test to 1.47.47 (Sebastian's OK)
+
+- Sebastian: mounting still freezes on 4.93 Evilnat. He tried to install the old webMAN himself and failed.
+- Found: installing the webMAN installer PKG through webMAN (/install_ps3) also auto-copies a plugin into
+  /dev_hdd0/plugins: my 09:50 reinstall of 1.47.48 had silently switched the active plugin from the "full"
+  variant (352353 B, f88f9f31) to "rebug_cobra_ps3mapi" (329109 B, 1664b7a7) - cpursx header showed
+  "[Rebug-PS3MAPI]" afterwards. So the freeze was reproduced with two 1.47.48 variants (full this morning,
+  rebug on 4.93). Overclocking (new in 1.47.48) excluded: wm_config.bin bytes 628/629/888/889 are 0 -> no
+  LV1 writes (feat/clock.h overclock() requires 300..1200 MHz).
+- Installer 1.47.48 also added /dev_hdd0/game/{LOADWMMOD,RELOADXMB,PKGLAUNCH,PS2CONFIG}, wm_res/ps3mon.sprx,
+  wm_lang, wm_icons, mygames.xml at 08:35-08:45 and reset settings (re-saved 09:02 by Sebastian).
+- Downgrade: installed /dev_hdd0/packages/webMAN_MOD_1.47.47_Installer.pkg.841.v1.47.47g_brewology_com.pkg
+  via /install_ps3 -> USRDIR 05:19 (PS3 clock), active plugin now 1.47.47 rebug_cobra_ps3mapi (320811 B,
+  sha1 346fdb5f554210f0336ed576dc6bb36c9b753e00); wm_config.bin kept. Restarted for the mount test.
+
+### 2026-09-06 11:48 - freeze also with 1.47.47 and with a folder game (GT5); test T1 = XMB pushlist aside
+
+- Sebastian: LBP Karting froze again with webMAN 1.47.47; GT5 (folder, worked at 07:00) freezes too; the
+  console is completely dead during the freeze (no ping). Every freeze touches crash_report/vsh (report is
+  consumed at the next boot). Cobra config /dev_hdd0/vm/cobra_cfg.bin is 24 B, plain values. Pending
+  XMB download tasks d0/d1.pdb look generic.
+- Suspect that survives CFW reflash + webMAN version + config: files the installer touched at 08:33-08:45,
+  esp. /dev_hdd0/vsh/pushlist/patch.dat + game.dat (modified 08:39 during the installer run, new
+  UPDWEBMOD/LOADWMMOD entries; UPDWEBMOD entry has an odd 0x80 flag). The XMB consults the pushlist on
+  disc insert (update badges) -> possible crash on a malformed entry.
+- T1 (with backups in job tmp/vshbak): renamed both to *.bak (11:45), restarted via webMAN, XMB up 11:46
+  with only the .bak files present. Sebastian mounts GT5 next.
+- Fallback T2: rename the new app folders /dev_hdd0/game/{LOADWMMOD,RELOADXMB,PKGLAUNCH,PS2CONFIG};
+  T3: reset wm_config.bin.
+
+### 2026-09-06 12:00 - STRONG lead: internal HDD failing (sustained-read test)
+
+- Discriminator from Sebastian: real Blu-ray discs boot fine; every HDD mount (ISO + folder GT5) freezes
+  the whole console (no network). Survives: webMAN 1.47.47 + two 1.47.48 variants, psnpatch off, dynamic +
+  manual fan, CFW 4.92->4.93 reflash (fresh Cobra), disc in/out, overclock (config zeros), pushlist removed,
+  wm_config intact. mygames.xml "XML errors" are a FALSE alarm (webMAN's format is intentionally non-strict).
+- Sustained sequential read of GT.VOL (12.1 GB, the file GT5 streams at load) over FTP:
+  chunk0 50MB @ 0.6 MB/s (85 s), chunk1 short read 42MB @ 0.9 MB/s, chunk2 EOFError (webMAN FTP died).
+  A healthy HDD here does several MB/s; earlier today small reads and the 21 GB NFS mirror read fast.
+  0.6 MB/s + short reads + connection death = classic failing-sector retry pattern on the internal 2.5" HDD.
+- MK64 homebrew (reads ROM/data from HDD) also froze -> anything that streams from the internal HDD hangs;
+  optical-disc boot bypasses the HDD and works. Conclusion: the internal HDD is very likely dying.
+- I never mount games; all my probes are read-only FTP. Stopped heavy reads to avoid stressing the drive.
+- Recommend: back up savedata now (still partly readable), then replace the 2.5" SATA HDD; run a full CFW
+  reinstall onto the new drive. Left the console as found (pushlist restored, 1.47.47, psnpatch off, fan 25%).
+
+### 2026-09-06 12:45 - PS3 freeze: narrowed to webMAN's XMB mount path; Sebastian considers it solved (mmCM works)
+
+- HDD excluded (21 GB copied from Blu-ray in 40 min this morning; my FTP read speeds were WLAN-limited ~0.4-1 MB/s,
+  on-console copy is a hard link so not a throughput test; /md5.ps3 not compiled in). External Cobra stage2: none
+  (/dev_flash/sys/stage2.bin from the PUP). boot_history.dat: no mounted game ever reached launch -> crash at the
+  mount action. mmCM (BLES80608, 04.91) mounts and starts LBP Karting fine now; his earlier mmCM attempt froze
+  (before the dkey move / downgrade / reflash). webMAN column entries use module_name idle_plugin +
+  module_action /mount_ps3/... = webMAN's path-mapped wm_proxy.sprx loaded INTO the XMB. Remaining split:
+  XMB-side proxy load vs webMAN's mount_game() -> decisive test = mount from the PC browser (web UI). Not done.
+- Console left: webMAN 1.47.47 rebug variant, psnpatch off, pushlist restored, fan 25 %, temp copies deleted.
+
+### 2026-09-18 - Start countdown per window and a car meter per window (3P/4P)
+
+Sebastian: the start countdown is gone in 3P/4P and every player wants a speed readout.
+All work done in RPCS3 with the 4P patch set (`patch_config.yml`: viewport count 4, MOrganizer
+player entries x4, window slots x4, MController key config - the 3P-only patches stay off).
+
+**Countdown.** `RaceRoot.onCountDown` does fire in a 4P race (log: count 6..1, `winmax=4`), so
+nothing suppresses the callback. GT5 has exactly one `Info::CountDown` (256x256, centred on the
+1920x1080 screen) plus two dead position templates in `RaceRoot::hidden` (`1P_CountDown` y=96,
+`2P_CountDown` y=636 - referenced by neither the scripts nor the EBOOT). With four viewports that
+single widget sits exactly on the crossing of the window borders, which is what "no countdown"
+looks like from the couch.
+`patch_countdown_split.py` gives every window its own: at the first countdown tick
+`modSplitCountDownSetup` appends copies of `Info::CountDown` and `Info::Go` to ROOT and centres them
+in their quadrant (4 windows TL/TR/BL/BR, 3 windows TL/BL/BR - the HUD order);
+`onCountDownDefault` shows them, `Go_Message` drives the GO/START copies, and the stock widget is
+hidden while the copies are up. `onStartVehicle`, `onOvertakeRestart` and `resetDisplay` clear them.
+Two windows or fewer take the stock path untouched.
+Evidence `doc/emu_4p_countdown_2026-09-18.png` (3-2-1 in all four windows, START likewise).
+
+**Car meter.** The native `MRaceDisplayFace` fills the meter widgets it finds *by name* inside the
+container passed to `begin()`; `Speedmeter`, `Tachometer`, `DigitalSpeed` and `Indicator` are all
+children of `Panel` (760x212). `Panel` was not in the quadrant patch's copy list, so switching
+`carmeter_disp` back on only gave window 0 a meter - one 1P panel across the middle of the screen
+(`doc/emu_4p_meter_center_2026-09-18.png`). Fix in `patch_hud_quad.py`: `Panel` joins the widget
+list copied into every window container, is scaled to 0.6 (456x127) and placed at (100, 358) inside
+the quadrant. The scale is applied around the widget centre, so those coordinates put the panel
+centred and flush above the lower quadrant edge. `appearPanel`/`disappearPanel` now also reach the
+extra containers (`sQuadDivs`), otherwise the panels of windows 3 and 4 never fade in.
+`MOD_HUD_SPEED=0` builds the earlier meterless HUD.
+Evidence `doc/emu_4p_meter_2026-09-18.png`.
+
+**Tooling.** `tools/shot.sh` now runs `import` under `timeout 10`: `import` grabs the X server while
+it captures, and when RPCS3 died mid-capture the grab froze Sebastian's whole desktop until the
+stuck process was killed by hand. `tools/build_mod.sh` runs `patch_countdown_split.py` as well.
+`race.mproject` unpacked to text with `adhoc mproject-to-text` (`mproj_txt/race.txt`) - that is how
+the widget geometries above were read; note the CLI wants a FILE for -i/-o, not a folder.
+
+Open: nothing tested on the console yet - `release/3p` and `release/4p` carry the new overlay,
+the hardware test (upload + 4 pads) is still pending.
+
+### 2026-09-18 (later) - All cars and all courses in the arcade lists
+
+Sebastian wanted Ferrari/BMW/VW and the Nordschleife in split screen. Everything is on the disc;
+three gates keep it out of the arcade lists, all three are lifted in `patch_arcade_unlock.py`
+(`MOD_ARCADE_UNLOCK=0` builds the stock behaviour):
+
+1. **Cars.** The "Arcade Only" tab calls `CarData::ArcadeModeGT5::getCarList()`, which appends
+   `arcade = 1` to the spec DB query - a few hundred of the ~970 cars. `CarRoot.ad` and
+   `CarSplitRoot.ad` now call `CarData::getCPPListImpl(nil, nil, nil, nil, "pp", "ASC", nil, true)`
+   instead, i.e. the same query without that condition. Note the condition list must be `nil`, not
+   `[]`: `createWhere` does `conditions.push(additional_conditions.join(" AND "))` and an empty
+   array would produce a bare `WHERE`.
+   Verified in the emulator: the split car select now offers e.g. Golf VI R '10 and
+   Corvette Z06 (C6) RM '06, neither of which was in the arcade list before.
+2. **Courses.** `CourseRoot.getCourseCandidates` drops every course whose `COURSE_AVAILABLE` save
+   flag is unset. That bitfield (`GameFlags.ad`) covers exactly topgear, nurburgring,
+   nurburgring_24h, nurburgring_vln, nurburgring_daynight, nurburgring_24h_daynight, spa, spa_wet,
+   newindoorkart(+short, +reverse), routex, routex_oval and the motegi layouts - the Nordschleife
+   among them, while `nurburgring_GP`/`nurburgring_dtm` have no flag and are always listed. That is
+   exactly the "two GP layouts but no Nordschleife" that Sebastian saw. The check is removed; all of
+   those courses ship in the volume (checked against `entries_mod.txt`).
+   Verified: Kart Space and Spa-Francorchamps are in the list now.
+3. **Weather courses in a split battle.** The stock code greys out every course whose weather can
+   change - the Nordschleife is one. Instead of disabling them, the course parameter is pinned to
+   sunny (`rain_/snow_situation_ = false`, `weather_changeable_ = false`,
+   `decisive_weather_ = SUNNY`); `createSplitBattle` then takes `decisive_weather_` into the race
+   parameter, so the race runs with fixed weather and no dynamic weather system in split screen.
+
+Still untested: a 4P race on the Nordschleife (memory/performance with four viewports on a 20 km
+track) and a Standard car in a 4P race. A 2P race with the unlocked lists started normally.

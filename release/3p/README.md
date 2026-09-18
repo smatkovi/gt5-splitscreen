@@ -76,8 +76,20 @@ and controller port, and sets `window_max` to the number of human players, clamp
   `createSplitBattle` uses the remembered cars and drivers; the spare-car fallback stays for safety.
 - **Quadrant HUD** (`OnboardMeterRoot.ad`, `patch_hud_quad.py`): with 3 or 4 windows every window
   gets position, lap, timers and its own course map; 4 windows = TL/TR/BL/BR, 3 windows = TL/BL/BR.
-  The speedometer/rev counter/gear panel is hidden in this layout (requested); the standings list is
-  not shown. 2-player races keep the original HUD.
+  Each window also gets its own car meter: the stock `Panel` (speedometer, rev counter, gear) is
+  copied into every window container, scaled to 0.6 and placed above the lower quadrant edge -
+  the native race display face fills whatever meter widgets it finds in the container it was given.
+  Build with `MOD_HUD_SPEED=0` for the earlier meterless layout. The standings list is not shown.
+  2-player races keep the original HUD.
+- **Start countdown per window** (`RaceRoot.ad`, `patch_countdown_split.py`): GT5 has a single
+  countdown widget in the centre of the screen, which with 3 or 4 viewports lands on the window
+  borders. Copies of `Info::CountDown` and `Info::Go` are created per window and centred in their
+  quadrant; the stock widget is hidden while they are up. 2 windows or fewer are untouched.
+- **All cars and courses in the arcade lists** (`patch_arcade_unlock.py`): the "Arcade Only" car tab
+  drops the `arcade = 1` spec DB condition, the course list drops the `COURSE_AVAILABLE` save-flag
+  gate (Nordschleife, 24h/VLN/day-night, Spa, Motegi, Kart Space, Route X, Top Gear), and courses
+  with changeable weather are pinned to sunny for split battles instead of being greyed out.
+  `MOD_ARCADE_UNLOCK=0` keeps the stock lists.
 
 Not needed any more: the earlier load fix ("cave4") — the slot-2 reset it worked around was a
 consequence of (1).

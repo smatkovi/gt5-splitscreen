@@ -1,8 +1,19 @@
 diff --git a/src/projects/gt5/arcade/CarRoot.ad b/src/projects/gt5/arcade/CarRoot.ad
-index 8d27dc7..dab7e03 100644
+index 8d27dc7..a0dda88 100644
 --- a/src/projects/gt5/arcade/CarRoot.ad
 +++ b/src/projects/gt5/arcade/CarRoot.ad
-@@ -797,6 +797,8 @@ module CarRoot
+@@ -690,7 +690,9 @@ module CarRoot
+                             cars = gEnablePremiumCars;
+                         else
+                         {    
+-                            cars = CarData::ArcadeModeGT5::getCarList();
++                            // --- 4P split patch: the stock call adds "arcade = 1" to the query,
++                            // which hides most of the cars on the disc.  Same query without it.
++                            cars = CarData::getCPPListImpl(nil, nil, nil, nil, "pp", "ASC", nil, true);
+                         }
+                     }
+                     break;
+@@ -797,6 +799,8 @@ module CarRoot
                      {
                          var cp = car.getCP();
  
@@ -87,7 +98,7 @@ index 1a99e70..cb48ae6 100644
                      if (res)
                      {
 diff --git a/src/projects/gt5/arcade/CarSplitRoot.ad b/src/projects/gt5/arcade/CarSplitRoot.ad
-index b2a7024..476be40 100644
+index b2a7024..d214c6e 100644
 --- a/src/projects/gt5/arcade/CarSplitRoot.ad
 +++ b/src/projects/gt5/arcade/CarSplitRoot.ad
 @@ -462,7 +462,7 @@ module CarSplitRoot
@@ -99,7 +110,18 @@ index b2a7024..476be40 100644
                      {
                          var rp = gp.event.race_parameter;
                          GAME_STATUS.user_profile.option.arcade_laps = rp.race_limit_laps;
-@@ -668,6 +668,8 @@ module CarSplitRoot
+@@ -575,7 +575,9 @@ module CarSplitRoot
+                             cars = gEnablePremiumCars;
+                         else
+                         {    
+-                            cars = CarData::ArcadeModeGT5::getCarList();
++                            // --- 4P split patch: the stock call adds "arcade = 1" to the query,
++                            // which hides most of the cars on the disc.  Same query without it.
++                            cars = CarData::getCPPListImpl(nil, nil, nil, nil, "pp", "ASC", nil, true);
+                         }
+                     }
+                     break;
+@@ -668,6 +670,8 @@ module CarSplitRoot
                      if (tab_id == TAB_TYPE::FAVORITE)
                      {
                          var cp = car.getCP();
@@ -108,6 +130,44 @@ index b2a7024..476be40 100644
  
                          if (course_is_dirt)
                          {
+diff --git a/src/projects/gt5/arcade/CourseRoot.ad b/src/projects/gt5/arcade/CourseRoot.ad
+index b2221ac..f9d38b5 100644
+--- a/src/projects/gt5/arcade/CourseRoot.ad
++++ b/src/projects/gt5/arcade/CourseRoot.ad
+@@ -601,9 +601,9 @@ module CourseRoot
+                             if (0 > category_courses.indexOf(crs_param.course_code_))
+                                 continue;
+ 
+-                            var course_label = main::gtengine::MSpecDB::getCourseLabel(crs_param.course_code_);
+-                            if (GAME_STATUS.user_profile.game_flags.getFlag("COURSE_AVAILABLE", course_label) == false)
+-                                continue;
++                            // --- 4P split patch: the COURSE_AVAILABLE save flag gates the
++                            // Nordschleife, the 24h/VLN/day-night layouts, Spa, Motegi, Kart Space,
++                            // Route X and Top Gear.  All of them ship on the disc, so list them.
+ 
+                             courses.push(crs_param);
+                         }
+@@ -663,12 +663,18 @@ module CourseRoot
+                 }
+                 else if (ArcadeProject::ArcadeModeEnum::SPLIT_BATTLE == gArcadeSequence.getArcadeMode())
+                 {
+-
++                    // --- 4P split patch: the stock code greys out every course with changeable
++                    // weather (the Nordschleife among them).  Pin the weather to sunny instead -
++                    // createSplitBattle copies decisive_weather_ into the race parameter when
++                    // weather_changeable_ is false, so the race runs without dynamic weather.
+                     if (crs_param.weather_changeable_ ||
+                         crs_param.rain_situation_ ||
+                         crs_param.snow_situation_)
+                     {
+-                        is_enable = false;
++                        crs_param.rain_situation_ = false;
++                        crs_param.snow_situation_ = false;
++                        crs_param.weather_changeable_ = false;
++                        crs_param.decisive_weather_ = main::gtengine::DecisiveWeather::SUNNY;
+                     }
+                 }
+ 
 diff --git a/src/projects/gt5/arcade/arcade.ad b/src/projects/gt5/arcade/arcade.ad
 index 5fafd72..41bb9b0 100644
 --- a/src/projects/gt5/arcade/arcade.ad
@@ -447,10 +507,10 @@ index d5177ae..544db9c 100644
  
          if (progress != nil)
 diff --git a/src/projects/gt5/race/OnboardMeterRoot.ad b/src/projects/gt5/race/OnboardMeterRoot.ad
-index c529382..f1fa6a0 100644
+index c529382..fbf0a70 100644
 --- a/src/projects/gt5/race/OnboardMeterRoot.ad
 +++ b/src/projects/gt5/race/OnboardMeterRoot.ad
-@@ -53,6 +53,21 @@ module ROOT
+@@ -53,6 +53,22 @@ module ROOT
          [Parette::Tacho,         1, 1546, 414]
      ];
  
@@ -465,14 +525,47 @@ index c529382..f1fa6a0 100644
 +        [InfoLeft::LapNumber,    258, 16],
 +        [MapClip,                10, 60],
 +        [InfoRight::TotalTime,   586, 16],
-+        [InfoRight::BestLap,     586, 108]
++        [InfoRight::BestLap,     586, 108],
++        [Panel,                  100, 358]
 +    ];
 +    static sQuadDivs = [];
 +
      static sRacerCol = [
          menu::MColorObject(212.0 / 0xFF, 212.0 / 0xFF, 212.0 / 0xFF, 1.0),
          menu::MColorObject(220.0 / 0xFF, 172.0 / 0xFF, 30.0 / 0xFF, 1.0)
-@@ -461,6 +476,80 @@ module ROOT
+@@ -95,6 +111,15 @@ module ROOT
+             DivWork.Info::Penalty::FadeInterpolator.start();
+             DivWork.RaceDisplayFace.appearPanel(true);
+         }
++
++        foreach (var QD in sQuadDivs)
++        {
++            if (QD.countChild() > 0)
++            {
++                QD.Info::Penalty::FadeInterpolator.start();
++                QD.RaceDisplayFace.appearPanel(true);
++            }
++        }
+     }
+ 
+     method disappearPanel()
+@@ -107,6 +132,15 @@ module ROOT
+             DivWork.Info::Penalty::FadeInterpolator.stop();
+             DivWork.RaceDisplayFace.appearPanel(false);
+         }
++
++        foreach (var QD in sQuadDivs)
++        {
++            if (QD.countChild() > 0)
++            {
++                QD.Info::Penalty::FadeInterpolator.stop();
++                QD.RaceDisplayFace.appearPanel(false);
++            }
++        }
+     }
+ 
+     function clearRaceDispInfo()
+@@ -461,6 +495,87 @@ module ROOT
              DivWork.RaceDisplayFace.begin(ORG, DivWork, 1, RaceRoot::Info);
              DivWork.RaceDisplayFace.dispmode = OP.racedisplay_view_mode;
          }
@@ -487,7 +580,13 @@ index c529382..f1fa6a0 100644
 +            Parette::Input.visible = false;
 +            Parette::Gas.visible = false;
 +            Parette::Tire.visible = false;
-+            Panel.visible = false;
++            Parette::Steer.visible = false;
++            Parette::Tacho.visible = false;
++            Parette::Indicator.visible = false;
++            // the native race display face fills Panel (speedometer, rev counter, gear); one copy
++            // per window, scaled down to 456x127 so it fits into a 960x540 quadrant
++            Panel.visible = true;
++            Panel.scale = [0.6, 0.6];
 +
 +            foreach (var W in sLayoutQuad)
 +            {
@@ -502,6 +601,7 @@ index c529382..f1fa6a0 100644
 +                Info,
 +                InfoLeft,
 +                InfoRight,
++                Panel,
 +                Parette,
 +                Adjuster,
 +                WongWay
@@ -537,7 +637,7 @@ index c529382..f1fa6a0 100644
 +            MapClip::CourseMapFace.begin(ORG, MapClip, MapClip::ComCar, OP.race_map_view_mode, map_scale, 0);
 +            RaceDisplayFace.begin(ORG, ROOT, 0, RaceRoot::Info);
 +            RaceDisplayFace.dispmode = OP.racedisplay_view_mode;
-+            RaceDisplayFace.carmeter_disp = false;
++            RaceDisplayFace.carmeter_disp = true;
 +            Parette.visible = false;
 +
 +            for (var k = 1; k < sWinN; k++)
@@ -546,14 +646,14 @@ index c529382..f1fa6a0 100644
 +                D.MapClip::CourseMapFace.begin(ORG, D.MapClip, D.MapClip::ComCar, OP.race_map_view_mode, map_scale, k);
 +                D.RaceDisplayFace.begin(ORG, D, k, RaceRoot::Info);
 +                D.RaceDisplayFace.dispmode = OP.racedisplay_view_mode;
-+                D.RaceDisplayFace.carmeter_disp = false;
++                D.RaceDisplayFace.carmeter_disp = true;
 +                D.Parette.visible = false;
 +            }
 +        }
          else
          {
              InfoRight::RacerPane.initialize(context, DriverName);
-@@ -554,6 +643,8 @@ module ROOT
+@@ -554,6 +669,8 @@ module ROOT
          InfoRight::RacerPane.finalize(context);
          InfoRight::LastLap.clearWindow(context);
          DivWork.clearWindow(context);
@@ -563,10 +663,33 @@ index c529382..f1fa6a0 100644
          if (preserved_signed_out_inner_pad_right != -1)
          {
 diff --git a/src/projects/gt5/race/RaceRoot.ad b/src/projects/gt5/race/RaceRoot.ad
-index 9fff4c7..eb9d6c3 100644
+index 9fff4c7..8f1c144 100644
 --- a/src/projects/gt5/race/RaceRoot.ad
 +++ b/src/projects/gt5/race/RaceRoot.ad
-@@ -171,6 +171,29 @@ module ROOT
+@@ -75,6 +75,12 @@ module ROOT
+             W.ImageFace0::ScalarInterpolator.restart();
+             W.visible = true;
+         }
++
++        if (sModGo != nil)
++        {
++            modSplitGoShow(toinit == true);
++            W.visible = false;   // the stock widget straddles the window borders
++        }
+     }
+ 
+     function GoalMessage(finish, win, lose, succ, disq)
+@@ -104,6 +110,9 @@ module ROOT
+     {
+         ROOT.visible = true;
+         Info::CountDown.visible = false;
++        modSplitCountDownSetup(context);
++        modSplitCountDownHide();
++        modSplitGoShow(false);
+         Info::Winner.visible = false;
+ 
+         Info::Winner.x = pdiext::MSystemConfiguration::is4x3() ? 1564 - 240 : 1564;
+@@ -171,6 +180,118 @@ module ROOT
          }
      }
  
@@ -593,10 +716,99 @@ index 9fff4c7..eb9d6c3 100644
 +        }
 +    }
 +
++    // --- 4P split patch: per-window copies of the start countdown and the GO message.
++    static sModCountDown = nil;    // one copy of Info::CountDown per window
++    static sModGo = nil;           // one copy of Info::Go per window
++    static sModCDWinN = 0;         // window count the copies were built for
++
++    // Quadrant centres: 4 windows TL, TR, BL, BR; 3 windows TL, BL, BR (same order as the HUD).
++    method modSplitCountDownSetup(context)
++    {
++        var n = main::ORG.window_max;
++        if (n < 3 || sModCDWinN == n)
++            return;
++
++        modSplitCountDownHide();
++        modSplitGoShow(false);
++
++        sModCountDown = [];
++        sModGo = [];
++
++        for (var k = 0; k < n; k++)
++        {
++            var q = (n == 3) ? ((k == 0) ? 0 : k + 1) : k;
++            var cx = ((q == 1 || q == 3) ? 1440 : 480).toFloat();
++            var cy = ((q >= 2) ? 810 : 270).toFloat();
++
++            var C = Info::CountDown.doCopy();
++            ROOT.appendChild(context, C);
++            C.x = cx - C.w / 2;
++            C.y = cy - C.h / 2;
++            C.visible = false;
++            sModCountDown.push(C);
++
++            var G = Info::Go.doCopy();
++            ROOT.appendChild(context, G);
++            G.x = cx - G.w / 2;
++            G.y = cy - G.h / 2;
++            G.visible = false;
++            sModGo.push(G);
++        }
++
++        sModCDWinN = n;
++        log4p("CD: built " + n.toString() + " countdown copies");
++    }
++
++    method modSplitCountDownShow(context, count)
++    {
++        modSplitCountDownSetup(context);
++        if (sModCountDown == nil)
++            return;
++
++        foreach (var C in sModCountDown)
++        {
++            C.CD_1.visible = (count == 1) ? true : false;
++            C.CD_2.visible = (count == 2) ? true : false;
++            C.CD_3.visible = (count == 3) ? true : false;
++            C.ScalarInterpolator.restart();
++            C.visible = true;
++        }
++
++        // the stock widget sits in the middle of the whole screen, across the window borders
++        Info::CountDown.visible = false;
++    }
++
++    function modSplitCountDownHide()
++    {
++        if (sModCountDown == nil)
++            return;
++        foreach (var C in sModCountDown)
++            C.visible = false;
++    }
++
++    // Called from Go_Message, which is a plain function without a context - the copies must
++    // already exist by then (built at the first countdown tick, or in resetDisplay).
++    function modSplitGoShow(show)
++    {
++        if (sModGo == nil)
++            return;
++
++        foreach (var G in sModGo)
++        {
++            if (show)
++            {
++                G.ScalarInterpolator.restart();
++                G.VectorInterpolator.restart();
++                G.ImageFace0::ScalarInterpolator.restart();
++            }
++            G.visible = show;
++        }
++    }
++
      method onInitialize(context)
      {
          ORG.setEventCallback(context, ROOT);
-@@ -199,7 +222,13 @@ module ROOT
+@@ -199,7 +320,13 @@ module ROOT
          ORG.pauseHandleAvailable = false;
          ORG.pauseAvailable = false;
          checkWetInfoVisibleCondition();
@@ -611,7 +823,7 @@ index 9fff4c7..eb9d6c3 100644
  
          sAlreadyQuited = false;
          resetDisplay(context);
-@@ -234,6 +263,11 @@ module ROOT
+@@ -234,6 +361,11 @@ module ROOT
          if (!gSequenceCondition.disable_start_session)
          {
              var start_session_success = gSequenceCondition.startSessionForRace();
@@ -623,6 +835,43 @@ index 9fff4c7..eb9d6c3 100644
              if (!start_session_success)
              {
                  context.pushEvent(main::menu::MScriptEvent(context, self, "on_failed_to_start_session"));
+@@ -1862,6 +1994,10 @@ module ROOT
+ 
+     method onCountDown(context, count)
+     {
++        log4p("CD: onCountDown count=" + count.toString()
++              + " winmax=" + main::ORG.window_max.toString()
++              + " demo=" + (gSequenceCondition.isDemo() ? "1" : "0"));
++
+         if (gSequenceCondition.isDemo())
+             return;
+ 
+@@ -1893,6 +2029,7 @@ module ROOT
+ 
+             Info::CountDown::ScalarInterpolator.restart();
+             Info::CountDown.visible = true;
++            modSplitCountDownShow(context, count);
+ 
+             if (count == 1)
+                 startMaxSpeedView(context);
+@@ -1921,7 +2058,9 @@ module ROOT
+ 
+     method onStartVehicle(context, slot_id, disp_start, start_sound)
+     {
++        log4p("CD: onStartVehicle slot=" + slot_id.toString());
+         Info::CountDown.visible = false;
++        modSplitCountDownHide();
+         var target;
+ 
+         if (gSequenceCondition.is_online)
+@@ -2142,6 +2281,7 @@ module ROOT
+ 
+     method onOvertakeRestart(context, slot_id)
+     {
++        modSplitCountDownHide();
+         if (PluginModule.defined("onOvertakeRestart"))
+             PluginModule::onOvertakeRestart(context, slot_id);
+ 
 diff --git a/src/projects/gt5/race/race.ad b/src/projects/gt5/race/race.ad
 index bf0c7a6..c35e308 100644
 --- a/src/projects/gt5/race/race.ad

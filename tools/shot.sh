@@ -9,10 +9,12 @@ for w in $(xdotool search --class rpcs3 2>/dev/null); do
     n=$(xdotool getwindowname "$w" 2>/dev/null || true)
     case "$n" in FPS:*) WID="$w" ;; esac
 done
+# import grabs the X server while it captures; if its target window disappears (emulator
+# crash) it hangs and the whole desktop freezes - so every capture runs under a timeout.
 if [ -n "$WID" ]; then
     xdotool windowraise "$WID" 2>/dev/null; sleep 0.3
-    import -window "$WID" "$OUT" 2>/dev/null || import -window root "$OUT"
+    timeout 10 import -window "$WID" "$OUT" 2>/dev/null || timeout 10 import -window root "$OUT"
 else
-    import -window root "$OUT"
+    timeout 10 import -window root "$OUT"
 fi
 echo "$OUT ${WID:-root}"
