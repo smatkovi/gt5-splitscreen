@@ -47,3 +47,4 @@ __pycache__/
 tools/scetool_keys.txt
 /installer/build/
 /installer/*.pkg
+/pdipfs_out

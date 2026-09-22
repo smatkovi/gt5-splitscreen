@@ -717,3 +717,618 @@ three gates keep it out of the arcade lists, all three are lifted in `patch_arca
 
 Still untested: a 4P race on the Nordschleife (memory/performance with four viewports on a 20 km
 track) and a Standard car in a 4P race. A 2P race with the unlocked lists started normally.
+
+### 2026-09-19 - GT6 cars in GT5? Car list diff and MDL3 format survey (no game change yet)
+
+Sebastian downloaded GT6 (BCES01893, disc 1.00, `GT.VOL` 15.4 GB) to the external btrfs partition and
+asked which GT6 cars GT5 lacks and whether they can be converted - the Tesla Model S first.
+`/` has only ~600 MB free, so all GT6 work lives in
+`/run/media/sebastian/2e638a7f-26db-4e89-9446-81d688464798/gt6work/` (never unpack the volume fully;
+`GTToolsSharp unpack --indices <FileIndex...>` extracts single entries, `listfiles` gives the indices).
+
+**Car list.** GT6 spec DB = `specdb/GT6/DB0106.dat`, SQLite, Salsa20 (`cryptsalsa -k` with
+`KeysetStore.SPECDB_KEY`). GT5 labels read from `GENERIC_CAR.idi` (`gt6work/idi.py`).
+GT6 1.00 has 1227 cars, GT5 2.17 has 1149; 1069 share label *and* ID. **158 GT6 cars are not in GT5**
+(155 premium) -> `gt6work/gt6_cars_not_in_gt5.tsv` (id, label, model code, name). None of them reuses a
+model file GT5 already ships (checked `car/race/<ModelCode>` against `volume_entries.txt`), so there
+are no "spec DB only" ports. Tesla Model S Signature Performance '12 = ID 1896, model 02360002.
+
+**File layout.** GT5: `car/{hq,race,interior,info,meter}/<model8>` + `wheel/{hq,race}/<model8>[.NN]`.
+GT6: `car/<maker4>/<car4>/{hq,race}/{body,body_s,wheel}`, `interior`, `info`, `meter`.
+The Tesla Roadster (02360001) exists in both games - the Rosetta pair for any converter work.
+
+**Format.** Header layout (0xE4) is identical, but:
+- GT5 files are MDL3 **v8** (disc) / **v9** (2.x DLC cars); GT6 files are **v14**.
+- GT6 moves vertex/index data out of the model into `body_s`: raw-deflate chunks, referenced by a
+  table at header+0xDC (6 named entries for the Roadster) that PDTools does not parse and GT5 files
+  leave 0. `shapeStreamMap` (header+0xAC) is 0 in both games' car files.
+- GT6 uses packed meshes (PMSH keys: 0x69 in the Roadster race body, none in GT5 v8; the v9 DLC files
+  have a PMSH header but no keys) and only 9 FVF definitions where the GT5 Roadster has 0x59.
+- Shaders/materials are compiled per game and bundled in the model.
+- `info` is `CAR5` in GT6; `meter` of the Roadster is byte-size identical in both games.
+- GT5's MDL3 fixup routine (around 0x8ca800..0x8cd000) only branches on version <= 1/2/3/5/6/7; there is
+  no upper version gate, i.e. a v14 file would be walked with the v8/v9 layout and never get its
+  `body_s` data.
+Community state (GTPlanet thread 425706, Nenkai's modding hub): nobody has ported GT6 cars to GT5;
+model creation is "not possible at the moment".
+
+**Conclusion.** No drop-in. Needs a v14 -> v9 downgrade converter (inline `body_s`, PMSH -> plain
+FVF shapes, material/shader remap) plus new spec DB rows (~20 Huffman `.dbt` tables), names, sound,
+thumbnails. Waiting for Sebastian's go before starting that.
+
+### 2026-09-19 (morning) - GT6 -> GT5 car port: test path in RPCS3, version-gate probe
+
+Sebastian gave the go for the converter, Roadster first. Tooling (all on the external disk,
+`gt6work/`): `build_cartest.sh <name> [volpath=file ...]` builds the usual 4P Adhoc mod plus
+arbitrary replacement files, with the arcade car list reduced to one spec DB label (script-side
+filter via `MSpecDB::getCarLabel`, default `tesla_roadster_08`); `run_cartest.sh <name>` deploys it,
+boots GT5 (`--no-gui`), walks to a 1P arcade race with `nav_single.sh`/`nav_to_car.sh`
+(copy of `tools/nav.sh`: three courses to the right = High Speed Ring, because the unlock patch puts
+Kart Space first and a kart-only course leaves the car list empty - that, not the SQL filter, was
+the "There are no cars to select" I first ran into), and stores menu/cockpit/roof/chase shots in
+`gt6work/shots/<name>/`. Select (`space`) cycles bumper -> cockpit -> roof -> chase.
+
+| test | car/race/02360001 | result |
+|---|---|---|
+| `t_base` | stock | Roadster in menu, cockpit and chase view - reference shots `shots/t_base4/` |
+| `t_ver14` | stock v8 file, version field (0xC) patched 8 -> 14 | loads and renders exactly like stock |
+
+So GT5 2.17 has no upper MDL3 version gate (matches the disassembly: the fixup routine only
+compares the version against 1..7). What keeps a GT6 file from loading is structure, not the number.
+Note: `car/race/<id>` is what the race uses; the menu shows `car/hq/<id>` (not replaced yet).
+Reference material fetched to `gt6work/ref/`: Nenkai's 010 templates (incl.
+`MDL3SeparateCarData.bt` = the `body_s` table) and current PDTools. `gt6work/sepdata.py` parses the
+table (stream struct stride is 0x18, not what the template says) and inflates `body_s`:
+entry "/" = base car (26 mesh chunks + 2 texture chunks), `custom_*` = GT6 custom parts.
+Nine parallel analysis notes (header/commands, VM, shapes/FVF, PMSH, body_s, TXS3, materials,
+shaders, GT5 loader RE) are in `gt6work/notes/*.md`, each with an adversarial verification section.
+
+**Swap test (same morning).** `t_swap`: `car/race/02360001` := GT5 `00010002` (yellow Mazda) -> the race
+shows the Mazda under the "Tesla Roadster" entry while the menu still shows the Roadster (menu =
+`car/hq`). That proves the PDIPFS replacement of `car/race/<id>` really reaches the renderer, so the
+`t_ver14` result counts: no upper version gate. `GTToolsSharp pack` also accepts a path that is not in
+the TOC yet (`Adding new file to TOC: car/race/02360002`) - not tried in game so far.
+
+**Analysis verdicts** (`gt6work/notes/understand_result.json`): all core findings confirmed by the
+adversarial pass; refuted sub-claims are corrected in each note's "Verification" section. Key facts:
+GT5 has no PMSH code at all (own, older chunked format via shape ref+0x30 and header+0x94); all strides
+(header, model, shape, FVF, material set, SHDS, TXS3, VM) are identical in v8/v9/v14; render command
+op 8 is encoded differently in GT6 (flag 0x92 carries an extra byte) and must be re-assembled; GT6
+shader programs use semantic ids 0xAB/0xAC (GT5 table ends at 0xA8, no bounds check) and a different
+shadow/light model -> GT5 donor shaders must be transplanted; GT6 texture pixels live in `body_s`.
+
+**Converter architecture** (`gt6work/conv/`): "append and repoint" - `core.Mdl` keeps the source main
+region as a mutable prefix, new structures are appended (offsets final at once), the VRAM region
+(pixels, then FP microcode) is rebuilt and pointer fix-ups resolved in `finalize()`; untouched
+structures stay byte-identical. Identity round trip of the GT5 Roadster verified. Modules (written in
+parallel, each with a GT5-container self-test so failures are attributable): `geometry.py`
+(PMSH/chunk decode -> plain shapes), `shaders.py` (GT5 donor transplant engine), `matmap.py`
+(GT6 material -> donor mapping), `textures.py`, `models.py` (commands/header/VM plumbing),
+`validate.py` (offline GT5-loader oracle).
+
+### 2026-09-19 afternoon - GT6 port: main-region size budget (RPCS3, slot car/race/02360001)
+
+Root `/` had run full (0 bytes): GT5's PDIPFS patch dir inside the RPCS3 install grows while playing. Moved the
+regenerable `~/gt5re/pdipfs_out` (7.8 GB, checksummed) to `gt5re_offload/pdipfs_out` on the external btrfs
+partition and left a symlink -> 7.6 GB free. The machine hard-rebooted at 13:49 (most likely an amdgpu gfx ring
+hang, same as the logged VK_ERROR_DEVICE_LOST at 14:28); after a reboot the external partition must be mounted
+again (`udisksctl mount -b /dev/nvme0n1p7`) or the symlink and gt6work are gone.
+
+Padding series (zeros appended to the main region, VRAM pointers shifted):
+Roadster +64k/256k/512k/768k (main up to 0x2e8980) race OK and car renders; Roadster partial marker (main 0x31fe00,
+real data) and +1M (0x328980) crash in ksF3 at 0x8fe848; +2M: model never loaded (NULL at 0x2baf94).
+Same +1M padding in VRAM instead: OK. Stock 00020024: unchanged OK, +1M zeros and +1M random both crash identically
+(-> not compression). Stock 02290001 (main 0x357280, the largest) runs unchanged, so it is not a fixed P limit:
+most likely a shared memory budget for main region + runtime allocations. Details: gt6work/notes/gt5_loader.md
+("Main-region size budget"). Rule for the converter: keep the main region lean, no dead weight; <= 0x2e8980 is
+proven for the Roadster slot.
+
+### 2026-09-19 15:13 - first ADDITIONAL car registered: Tesla Roadster AWD '08 (RPCS3)
+
+Overlay `gt6work/build/reg/roadster_awd_full-pdipfs` (built by `gt6work/specdb/build_reg.sh roadster_awd
+cars/tesla_roadster_awd_08.json`: uncompressed spec DB tables + regenerated .idi/.sdb, PartsInfo entry, thumbnail,
+arcade.adc with reg_patch_arcade_addcars.py; review_reader: 0 problems). Test `run_cartest.sh reg_awd`
+(shots in `gt6work/shots/reg_awd/`): boots, the Arcade car list shows "TESLA ROADSTER AWD '08" as its own entry
+(thumbnail, Tesla logo, spec panel Drivetrain 4WD), starting grid lists "User - Tesla Roadster AWD '08" next to
+AI "Tesla Roadster '08", race loads, cockpit and chase views correct, no ·F errors.
+=> the game accepts uncompressed .dbt tables (open question 1 of reg_registration_chain.md answered: yes).
+Not yet checked: that the drive physics are really AWD (only the spec panel was seen), split screen, PS3 hardware.
+Sebastian drove the AWD clone in RPCS3 (18:xx): "der tesla scheint 4wd zu sein, ich hab mehr kontrolle beim rutschen"
+-> AWD physics confirmed by hand. Yellow colour (index 8) also verified by test awd_yellow. A hang when starting a second
+race in a 3-hour-old leftover test instance (run_cartest.sh leaves rpcs3 running) did not reproduce on a fresh boot.
+
+## 2026-09-19 19:30-20:30 - Split screen: cockpit/windscreen views, experiment
+
+Sebastian asked for all camera views in split screen. Findings:
+- RPCS3 runs the pre-patched EBOOT in dev_hdd0 (PPU hash `PPU-e7b9d5803786c4224421fb0b72a2460bd1fb9c7c`, 4P words baked in);
+  the groups under `PPU-223cc85f...` in `~/.config/rpcs3/patches/patch.yml` do NOT apply to it. New experiment groups must
+  go under the e7b9 hash. Verified by reading memory through RPCS3's GDB stub (127.0.0.1:2345, `m<addr>,4`);
+  closing the socket kills the GDB thread with a fatal error and freezes the emulation -> read only at the end of a run.
+- SELECT path: 0x467a14 walks the view list of the global view table (`*0x17fd3f8`); 0x46432c maps a view number to a
+  list index (skips views with vt+0x70 true / vt+0x10 false); 0x464460 returns a skip mask (0x10 bad index, 0x20 no
+  view, 1/2/4/8 from vt+0x14/+0x10/+0x18/+0x70).  Experiment group "GT5 split: allow all camera views (experiment)"
+  (nops 0x4644e8/0x46450c/0x464538/0x464560 and 0x4643b0/0x4643d8, confirmed in memory): 2P split on High Speed Ring
+  still cycles only bumper <-> chase. => INCAR/DRIVER are not filtered but NOT REGISTERED in split mode; the place where
+  the table is filled per window is still unknown.  Group left in patch.yml, disabled.
+- The interior model (`car/interior/02360001`, PDIPFS 9/61/MX) is loaded in every 1P race and never in split races:
+  a cockpit view would also need the interior loading enabled (memory per player on the PS3, see the car main-region
+  budget finding of the same day).
+- Tooling: `nav.sh` misreads the split "Driving Options" dialog as `car` and waits; confirm with X + n by hand.
+
+### 2026-09-20 - second AWD clone: Volkswagen 1200 AWD '66, and camera-view experiments
+
+**Beetle AWD (Sebastian's request "4x4 vw käfer")**: `gt6work/specdb/cars/volkswagen_1200_awd_66.json`
+(clone of `volkswagen_1200_66`, car id 1585, same model code; stock car is RR drivetype 4 -> drivetype 2 / type4WD 2,
+fixed 30:70 front:rear because of the rear engine, open driven front diff, wheel inertias unchanged).
+Combined overlay with the Roadster AWD: `specdb/build_reg.sh awd_cars cars/tesla_roadster_awd_08.json
+cars/volkswagen_1200_awd_66.json` -> `build/reg/awd_cars_full-pdipfs` (review: 0 problems). RPCS3 test `awd_cars`:
+car select shows "1200 AWD '66" (VW logo, Drivetrain 4WD), race on High Speed Ring runs, no ·F errors.
+One overlay = one TOC, so both cars must be packed together (as done here).
+
+**Split-screen camera views - three experiments, all negative** (patch group under the e7b9 hash, verified in memory):
+1. skip-mask/lookup filters nopped (0x4644e8/0x46450c/0x464538/0x464560 + 0x4643b0/0x4643d8): still bumper <-> chase only.
+2. sentinel 0x467a14 = `li r3,0; blr`: SELECT does nothing -> 0x467a14 IS the split SELECT path.
+3. view count forced to 16 (0x3694f4 / 0x369534 = `li r3,0x10; blr`), alone and together with (1): still 2 views.
+Runtime facts (RPCS3 GDB stub): the view table (global 0x17fd3f8) has its counters at (table+4)+0x20..0x23 =
+`10101010` in 1P and `02020202` in split; the 16 view slots at camctx+0xd970 are filled unconditionally.
+The counters are only ever *copied* from a source struct (0x4901ec, 0x4913e4), so the 2 comes from a per-mode
+parameter block that is not located yet. Next lead: dump the 16 slot objects (vtable + the number returned by
+vt+0x20) in 1P and in split and compare - if split slots carry other view numbers, the numbers (not the count)
+are the gate. Script: `scratchpad/gdbslots.py`.
+GDB stub notes: it PAUSES emulation while connected ('c' did not resume it), and closing the socket kills the GDB
+thread and freezes the game -> use it only as the last action of a run.
+
+### 2026-09-20 - split-screen TUNING prototype (works, not yet operable)
+
+`gt6work/specdb/patch_arcade_split_tuning.py` (wired into build_reg.sh behind `MOD_SPLIT_TUNING=1`) opens
+`SettingProject::SettingPopup.open(context, cp, nil, nil)` right after each split-battle player's Driving Options
+dialog in arcade.ad (anchor: `result = SettingProject::DrivingOptionRoot.OpenDialog(context, data);`), after
+`cp.ownArcadePartsAll()` for rental cars. The setting project is already loaded in arcade, so no project load is needed.
+RPCS3 test `split_tuning` (overlay build/reg/awd_tuning_full-pdipfs): the FULL settings UI appears in the split flow
+(Body/Chassis, Engine, Intake, Exhaust, Turbo, Transmission, Drivetrain, Suspension, Brakes, Tyres; 278 BHP, 1238 kg,
+PP 464, "Player: 2") -> tuning in split screen is possible at script level.
+Open problem: the popup takes no pad input (X/Circle/Start/Triangle on pads 1 and 2 all ignored), so the flow is stuck
+and the race never starts. Most likely it is opened without a pad/window routing that the split flow needs
+(DrivingOptionRoot gets `data.split_battle` + `data.window_id`; SettingPopup has no such parameter).
+Next: hook it into CarSplitRoot (the per-player car select page, which already has pad routing per player) instead of
+the arcade.ad options branch, or find the port/window binding SettingPopup needs.
+
+### 2026-09-20 - survey: can all 158 GT6-only cars be converted? (no game change)
+
+Extracted race/body + race/body_s of all 158 cars from GT.VOL (`GTToolsSharp unpack --indices`, 316 files, 405 MB,
+`gt6work/gt6_survey/`) and ran `conv/geometry.decode_gt6` over them (`gt6work/scratch/survey_decode.py`,
+results `gt6work/gt6_decode_survey.json`, write-up `gt6work/notes/gt6_convert_survey.md`).
+* Data: every one of the 158 cars has race+hq body/body_s/wheel, interior and info; only the optional meter is
+  missing for 35.
+* Decode today: **59 of 158** (16 of them with tessellated shapes). Of the 99 failures, **80 fail only because the
+  base render-command path allows opcodes {0,1,2,5,6,9,10,14} (conv/geometry.py:758) while those cars also use 8,
+  11 and 12**; the other 19 are packed map2/tangent layout variants and one inconsistent separate-data header.
+* Still unproven end to end: no GT6 car runs in GT5 yet (shader/material self-tests crash), and a new model code
+  needs checklist B of the registration notes.
+
+### 2026-09-20 - split tuning, second attempt (still no pad input)
+
+`patch_arcade_split_tuning.py` now patches `CarSplitRoot::CarFinder.cb_selected_car` (right after the colour
+selector, before setup_driving_option) instead of arcade.ad, and calls `ArcadeProject::ignorePadEvent(false)` before
+`SettingProject::SettingPopup.open(context, cp, nil, nil)`. Test split_tuning2/3: the popup appears for the
+selecting player at the right moment (car select -> colour -> tuning), but still takes no pad input (Down/X/Circle
+on pads 1 and 2 do nothing, no focus highlight), so the flow stays stuck there. ModalPage.open() does block
+(pushPage + enterEventLoop, scripts/gt5/SequenceUtil.ad:336), and SettingPopup.onInitialize does set a focus
+(ROOT.setFocus(...Close)) and hides the other pages - neither is visible in game, so the page is probably never
+initialised in this context.
+Ideas for the next attempt: check whether the split contexts need the page pushed through the player's own
+root_window (CarSplitRoot has per-window roots) instead of the SettingProject ROOT singleton; or extend
+`SettingProject::DrivingOptionRoot` (which already works per player with split_battle/window_id) with tuning items
+instead of reusing SettingPopup.
+Deployed overlay left as `awd_cars` (both AWD cars, no tuning patch) so the game stays playable.
+
+### 2026-09-20 - first END-TO-END conversion attempt of a GT6 car (Tesla Model S) - hangs at race load
+
+`gt6to5.py gt6_survey/car/0236/0002/race/body build/models_race.mdl --lut synth` produces a complete GT5 v8 file
+(3.9 MB, main region 0x301800) and `conv/validate.py` reports **PASS, 0 errors** (warnings: hdr+0x94 = 0,
+op5 selectors 113/114/124 unknown to the GT5 host, 16 x op54, 2 x op61). `--lut gt5_roadster` is refused for this
+car (9 GT6 colour slots vs 12 Roadster LUTs) -> `--lut synth` is the right policy for non-Roadster cars.
+Test t_models / t_models2 (file put into car/race/02360001): menu and car select fine, the pre-race grid appears,
+but pressing start never loads the race - file reads stop completely, no ·F, no SPU/RSX error, the game just hangs
+(screenshots shots/t_models2/late*.png).
+Second attempt with `--custom static0` (notes/header_model_cmds.md option A: replace op44+op54 custom-part pairs by
+Jump -> branch 0): op5 selectors and op54 are gone (warnings down to 3), file 0x3d4800 / main 0x301580 -
+**same hang** (shots/t_models_s0).
+So the remaining suspects are not the custom-part VM path: op61 (2x), the missing packed-shape context (hdr+0x94 = 0),
+the shader/material transplant, or the geometry itself. Next: bisect by converting with parts of the pipeline
+disabled (geometry only on a donor container vs. textures only vs. shaders only).
+Split tuning, third attempt: `SettingPopup.openPage(...)` instead of `.open(...)` - worse, the page transition
+drops out of the arcade sequence back to the mode screen (shots/split_tuning4, split_tuning5). Patch reverted to
+the ModalPage `open()` variant (renders correctly, no pad input). Deployed overlay is `awd_cars` again.
+
+### 2026-09-20 - split tuning, attempts 4 and 5
+
+4. Copy the SettingPopup page per player (`doCopy()` + `context_number`, the trick DrivingOptionRoot.OpenDialog
+   uses): **black screen**. The copy's postInitialize hides every other page while the copy itself draws nothing -
+   all of SettingPopup's internals reference the `ROOT` singleton, not `self`, so per-player copies cannot work
+   without rewriting SettingPopup.ad.
+5. New approach `specdb/patch_split_tuning_rows.py`: add three tuning sliders (cp.ballastWeight 0..200,
+   cp.ballastPosition -50..50, cp.restrictorPermill 500..1000) to `SettingProject::DrivingOptionRoot`, which IS
+   opened per player in split battles. Rows are built by copying the existing `Laps` slider row
+   (`Pane_S.Laps.doCopy()` + `Pane_S.appendChild`), values written back in `apply()`. build_reg.sh now also
+   compiles and packs `projects/gt5/setting/setting.adc` when MOD_SPLIT_TUNING=1 (the build works).
+   In game: the split flow reaches the car select, then the screen goes **black** right after the car is confirmed
+   -> the row copy or the appendChild call fails (no script error is visible; TTY.log stays empty).
+   Next: verify the row/widget names of the Laps row (label child, slider child) against the layout, try
+   `Pane_S.appendChild(row)` without context, or copy a simpler row; a widget-name dump from the running game
+   would settle it.
+Deployed overlay is `awd_cars` again (both AWD cars, no tuning), so the game stays playable.
+
+### 2026-09-20 - converter: packed-shape context ruled out as the cause of the Model S hang
+
+Test t_nopackctx: the STOCK Roadster with `conv.geometry.zero_gt5_packed_context` applied (hdr+0x94 = 0 and the four
+u16 at B0+0x28 = 0) **crashes** at race load (·F ksF3 0x00b99284, read of 0x20). That is not a contradiction of
+notes/vm.md - that file still contains chunked shapes, and a chunked shape with a NULL context takes the packed path
+and dereferences it. It does confirm the precondition the note states: zeroing is only allowed when EVERY shape is
+plain, which is exactly the case in converted GT6 files (PMSH is decoded to plain shapes).
+=> hdr+0x94 = 0 is not the reason the converted Model S hangs; the remaining suspects are the shader transplant
+(the t_selftr / t_matmap self-tests fail with SPU compile errors), the material mapping and the geometry itself.
+
+### 2026-09-20 - split-screen tuning WORKS (preset picker in the arcade project)
+
+Decisive negative first: shipping a **recompiled** `projects/gt5/setting/setting.adc` breaks the Driving Options
+dialog (black screen) even when the source is completely unchanged - control build with MOD_TUNE_LEVEL=0
+(shots/tune_l0), same with one copied row (tune_l1). The compile itself looks fine (350553 B vs stock 350434 B),
+but only `arcade.adc` / `race.adc` are known to rebuild faithfully. => no modifications inside the setting project.
+
+Working solution: `specdb/patch_arcade_split_tuning.py` (rewritten) patches **arcade/CarSplitRoot.ad** only. It adds
+`openTuning` / `makeInitialDataForTuning` / `cb_init_tune` / `cb_focused_tune` / `applyTuning` to the module
+`CarColorSelector` - i.e. it reuses the colour selector's finder, the one dialog that provably takes the pad of a
+single split-screen player - and calls it in `cb_selected_car` right after the colour selector:
+8 presets (Standard, Ballast 50/100/200 kg, Power 90/80/70, Ballast 100 + Power 80) writing `cp.ballastWeight`,
+`cp.ballastPosition`, `cp.restrictorPermill` between `cp.beginSetting()` / `cp.endSetting()`, after
+`cp.ownArcadePartsAll()` for rental cars and before `setArcadeCar(cp, player_num)`.
+In game (shots/tune_step, tune_race): after the colour chips the player gets a second row of 8 chips (the presets,
+balloon tip = preset name), X confirms, the flow continues into the Driving Options and the 2P race runs normally.
+`scratchpad/split2_hsr.sh` updated for the extra step.
+Open: the preset name in the balloon tip and the actual effect are not verified yet (the split default car is a
+kart, whose spec panel shows "---"); redo with a Tesla/Beetle. Next UX step would be own chip colours/labels and
+more values (gears, LSD, brake balance) - all the same pattern.
+
+### 2026-09-20 - converter: the blocker is the shader transplant (SPU side)
+
+Re-ran both self-tests on the STOCK Roadster container (so geometry/textures are known good):
+* `t_selftr2` (build/g5r_selftransplant.mdl, material set pointing at a transplanted copy of all shader programs):
+  **crash** - `·F SPU[0x3000100] PDICellSpursKernel3 [0x07654] SPU: Compilation failed.`
+* `t_matmap4` (build/g5r_matmap_selftest.mdl): **crash** - `·A SPU[0x0000100] PDICellSpursKernel0 [0x08eb8]
+  VM: Access violation reading location 0x0`.
+Both die inside the SPURS kernels, i.e. the game hands the SPU a structure our transplant leaves NULL or mis-relocated;
+the PPU-side structure rules that conv/validate.py checks are all satisfied (SHDS FP table: 109 entries, every ucode
+offset inside the VRAM region and 128-byte aligned, txs/shds P fields correct - verified against the stock file).
+=> the GT6 Model S hang at race load has the same root cause; geometry and textures are not the blocker.
+Next: find what the SPU reads per material/shader (SPURS job data) and which pointer of the transplanted material set
+is still stale - compare stock vs transplanted material-set records field by field, not just the SHDS table.
+
+### 2026-09-20 - split tuning verified in game (Tesla Roadster AWD, High Speed Ring)
+
+shots/tune_proof: after the colour chips player 1 gets the second row of 8 chips, the balloon tip reads the preset
+name (screenshot shows **"Power 70"** on chip 7) -> the picker is operated by that player's pad and is labelled.
+Side effect of `cp.ownArcadePartsAll()`: the following Driving Options dialog now also offers **Front/Rear Tyres**
+(the arcade parts are owned), i.e. tyre choice per player in split screen comes for free.
+The Specifications panel keeps showing the spec-DB power (248BHP) - it does not reflect cp settings, so it cannot
+serve as proof of the restrictor; a top-speed comparison in-race was attempted but the unattended cars hit the
+barriers, so the measured numbers (91 vs 88 mph) are not conclusive. The values themselves are written with the
+game's own API (`beginSetting` / `ballastWeight` / `ballastPosition` / `restrictorPermill` / `endSetting`) before
+`setArcadeCar`, exactly as TuningPopup does it.
+Deployed overlay: `awd_tuning` (both AWD cars + the picker) - the 1P flow is untouched, only CarSplitRoot is patched.
+Converter, static comparison of the self-transplant against the stock file (no new lead): the material-map records,
+the table at hdr+0xf0 and the B0 per-model records are all relocated correctly in the transplanted file; the 126
+words that still point into the old material-map range sit inside the DEAD copy of the hdr+0xf0 table that
+append-and-repoint leaves behind, not in any live structure. The stale-pointer hypothesis is therefore refuted;
+the SPU crash must come from data the SPURS jobs read (shader program / command-list structures), which the PPU-side
+comparison cannot see. Next: find the SPU job descriptor for material/shader work and dump it in the emulator.
+
+### 2026-09-20 23:06 - installed on the PS3 (console 192.168.1.6, announced and requested by Sebastian)
+
+Console found at **192.168.1.6** (the journal's 192.168.0.2 / .1.11 are stale; MAC 00:1f:a7:.. = Sony),
+webMAN 1.47.47g MOD, firmware 4.93 CEX Cobra 8.5, no game running, `EBOOT.BIN` = the patched 4P one (9477184 B)
+with `EBOOT.BIN.orig` (9505120 B) still next to it -> the EBOOT was NOT touched by this upload.
+Uploaded `gt6work/mods/awd_tuning-pdipfs` (57 files) to `/dev_hdd0/game/BCES00569/USRDIR/PDIPFS/`, every file
+size-verified after upload (57 ok, 0 mismatch). Contents: arcade.adc (all cars/tracks unlocked + the two AWD cars
++ the split-screen tuning preset picker), race.adc (3P/4P windows, quadrant HUD/meter, split countdown),
+spec DB + PartsInfo + carlist + thumbnails for Tesla Roadster AWD '08 and Volkswagen 1200 AWD '66.
+Backup + rollback: `gt6work/build/ps3_backup_0920_2306/` holds the 5 files the console had before (K/4D = TOC,
+9/DF/9T arcade.adc, 9/S3/3J race.adc, 9/PQ/O3, 9/7T/X6) and `rollback.sh` (`PS3=192.168.1.6 ./rollback.sh`)
+which restores them and deletes the 52 added files.
+NOT included (does not work): all camera views in split screen.
+
+### 2026-09-20 - split-screen camera views: attempts 6-8 (still only bumper <-> chase)
+
+All three ran on the e7b9 hash group, this time with the patched words **verified in the running game** through the
+GDB stub (3694f4 = li r3,0x10, 369534 = li r3,0x10, 4644e8 = li r30,0, 4643b0 = nop):
+6. count/bound forced to 16 + all skip-mask filters nopped: unchanged, 2 views.
+7. same, verified in memory: unchanged -> the count and the permission mask are NOT the gate.
+8. number->index lookup 0x46432c replaced by an identity mapping (`mr r3,r5; extsw r3,r3; blr`), so a candidate
+   number is used directly as a slot index: unchanged, 2 views.
+So the switch never even reaches the other slots: the candidate number in 0x467a14 only ever takes two values
+(r23 = the current view's own number via view->vt[0x20], r31 = r23 +/- step). The next thing to look at is where
+that step/current number comes from (0x46473c and the ctx fields at +0x174/+0x17c the 09-06 journal found), not the
+list mechanics.
+Independently: the interior model (car/interior/<code>) is never loaded in a split race (PDIPFS 9/61/MX opened in
+every 1P race, never in split), so even a selectable cockpit view would have nothing to draw. Both halves have to
+be solved for the feature.
+Patch group left in patch.yml, disabled.
+
+### 2026-09-21 - MILESTONE: GT6 geometry renders in GT5 (shader transplant bypassed)
+
+`gt6work/scratch/geom_only_port.py`: put GT6 meshes into the UNCHANGED GT5 donor container - donor material set,
+SHDS and TXS3 stay byte-identical, only shapes are replaced, each keeping the donor shape's material index.
+* Variant A (keep the donor shape's FVF definition, 40 shapes, main 0x2aec80): **race runs, the GT6 body is
+  visible** in cockpit and chase view (shots/t_geom40, doc screenshot: a metallic, scrambled car-shaped mass).
+  Scrambled because GT6 attributes are written into the donor layout without conversion - but it draws.
+* Variant B (`OWN_FVF=1`: a layout built from the mesh + emit_fvf, main 0x2c0900): **all race views black**
+  (shots/t_geom40b) - a new FVF the donor's vertex program does not understand kills the frame.
+=> The geometry pipeline (PMSH decode -> plain GT5 shapes) is sound; the blocker really is the material/shader side.
+Direction for the converter: convert GT6 mesh attributes INTO the donor's existing layout (reorder/retype per
+element) instead of synthesizing a new FVF, and keep donor materials until the transplant is fixed.
+Note: replacing all 217 shapes gives main 0x464c00 (4.6 MB) - far over the memory budget; the old geometry stays in
+the file as dead weight (append-and-repoint), so a real port must drop the donor geometry it replaces.
+
+### 2026-09-21 - bonnet/interior view: attempt 9 (forcing the applied view index) - still two views
+
+New group "GT5 split: force view index 1 on SELECT": `0x467c94` (`extsw r4,r3`, the index 0x46432c resolved) ->
+`li r4,1`, verified in memory (38800001). Every SELECT should now apply slot 1 and the view should become constant.
+In game (shots/cam_force1) SELECT still toggles bumper <-> chase.
+Together with attempt 2 (sentinel: patching 0x467a14 to return immediately DOES kill SELECT) this means the split
+toggle runs through 0x467a14 but not through its 0x467c90/0x467c94 apply tail - i.e. the two reachable views are
+switched by an earlier branch inside 0x467a14 (the 0x4677e4 / 0x467488 path at 0x4674xx, or the pad module's own
+camera toggle at 0x48A05C from the 09-06 journal). That is where the next attempt has to look; the list mechanics
+(count, permission mask, number->index lookup) are now all ruled out by measurement.
+
+### 2026-09-21 - bonnet/interior view: attempts 10 and 11 - the split toggle does not use 0x467488 at all
+
+10. `0x467c94 -> li r4,2` (force the applied index at the walk's apply tail): unchanged, bumper <-> chase.
+11. additionally `0x4677e0 -> li r4,1` (the OTHER caller of 0x467488, in the message dispatcher; both verified in
+    memory): unchanged.
+So neither call site of the view-apply function drives the split-screen toggle, although patching 0x467a14 to
+return immediately DOES disable SELECT (attempt 2). Conclusion: 0x467a14 consumes the SELECT event and switches the
+camera through a path that bypasses 0x467488 - most likely writing the camera context's view index/mount fields
+directly (09-06 journal: ctx+0x174/+0x17c with copies at +0xDB84/+0xDB8C, +0xE1E4/+0xE1EC). The bulk writes at
+0x493c58/0x499270 are struct copies, not the toggle, and 0x48a05c is the per-player input state builder (0x290
+stride), not the camera switch. Next attempt should trace inside 0x467a14 between 0x467a58 (0x46473c) and the apply
+tail, or set a data watch on the context fields.
+
+### 2026-09-21 - bonnet view: important CORRECTION - 0x467a14 is dead code
+
+A full-segment branch scan (whole first PT_LOAD, not just .text up to 0xf9e6e0) finds **no caller at all** for
+0x467a14, and its address appears nowhere as data (no OPD/vtable entry). The same scan confirms 0x467488 has
+exactly the two callers 0x4677e4 / 0x467c9c - both of which were patched to force a constant view without any
+effect. So:
+* the "sentinel" result of attempt 2 (patching 0x467a14 kills SELECT) was a **misreading** - that run simply never
+  showed a chase frame. Every conclusion built on "0x467a14 is the split SELECT path" is void.
+* the visible split toggle does not go through 0x467488 either (no other caller exists, forcing it changes nothing),
+  and it does not write the current-view field (only writers: 0x465bfc reset, 0x4674d8 inside apply, 0x468890 init).
+New, better lead: the per-frame camera update around **0x475b30** (reads the global view table at 0x17fd3f8, calls
+the permission check 0x464460 at 0x475cbc, stores 0/1/2 into ctx+0xd38 and sets the camera through 0x464db0 /
+0x466cdc). Inside apply, 0x4675a0 picks between two camera configs of the SAME view object (r27+0x10 vs r27+0x20) -
+so the two reachable "views" in split may well be two configs of one view, not two different views.
+Next attempt should trace 0x475b30: what feeds the view index r22 it asks 0x464460 about, and where the split flow
+limits it.
+
+### 2026-09-21 - bonnet view, attempt 12 (live view query) - still two views; stopping this approach
+
+Traced from the permission check 0x464460 to its callers: 0x467bf4 and 0x475cbc sit in **dead** functions
+(0x467a14 / 0x475b44 - neither is branched to anywhere in the whole segment nor referenced as data; the search
+method was validated against a known vtable function), 0x481d48 is dead as well. The only LIVE caller is
+**0x478310**, a virtual method in vtable 0x16ea680 at +0x68 ("is this view selectable?", stores the answer as a
+byte at this+0x1c). Patch "view query always allows" (0x4783a4 `bne` -> nop, verified in memory): the split race
+still only alternates bumper <-> chase.
+Status: twelve measured attempts. Ruled out by experiment: list length/bound, permission mask, number->index
+lookup, both apply call sites, the live view query. The camera change in split therefore happens in code that does
+not consult any of these - it cannot be found by static reading alone any more.
+What it would take next: instruction-level tracing (RPCS3's GUI debugger with a breakpoint on the camera context
+write, or a logging patch into a code cave that records the requested view numbers into a scratch area which the
+GDB stub reads at the end of a run). That is a different working mode than the black-box patch/run loop used so far.
+All camera patch groups are in patch.yml and disabled.
+
+### 2026-09-21 - clean body port works: conv/port_body.py
+
+`gt6work/conv/port_body.py <gt6 body> <out.mdl> [--budget]`: keeps the donor's material set, SHDS and TXS3
+byte-identical and only swaps geometry. Donor GTBE_BODY shapes and GT6 GTBE_BODY shapes are paired by vertex count
+(the names of two different cars never match - only 2 of 217/225 names are identical), the biggest GT6 body shapes
+replace the biggest donor ones until the main-region budget is reached, and **every donor body shape that is not
+replaced is emitted as a degenerate shape** - without that the donor's own body is drawn through the new one, which
+is exactly the "both Teslas rendered into each other" Sebastian saw.
+Model S -> Roadster container: 13 of 124 GT6 body shapes replaced, 164 donor shapes hidden, main 0x2eb200,
+file 3.5 MB. In game (t_clean2): the race runs and the car is a coherent, clearly different body (sedan rear
+instead of the roadster's), rendered in the donor's dark material. Side-by-side with the stock car:
+shots/t_clean2/race_chase.png vs shots/t_pad512k/race_chase.png.
+Open for a full port: paint/materials (the shader transplant still crashes in the SPU), only 13 of 124 body shapes
+fit because append-and-repoint keeps the replaced donor geometry as dead weight - a real port has to compact the
+main region.
+Pitfall for future tests: `run_cartest.sh <name>` only deploys `mods/<name>-pdipfs`; the file has to be built with
+`build_cartest.sh` / `batch_cartest.sh` first, otherwise the previous overlay is tested (cost one run today).
+
+### 2026-09-21 - bonnet view: the live camera code is finally located (attempts 13-15)
+
+Black-box bisect of the 8 call sites of the camera-set helper 0x464db0 (nop the bl, then run a 2P race):
+* group A (0x466d84 + 0x466f94 + 0x4671b8) off: the race still toggles between two views, but one of them is
+  **visibly broken** - the camera sits under the car looking at the underbody (shots/cam_groupA). So these calls
+  are the ones that actually position the split-screen cameras; the live camera code is
+  **0x466d08, 0x466df0 and 0x467008** (the three functions containing those sites).
+* only 0x466d84 off: everything normal again (shots/cam_site1) -> the effect comes from 0x466f94 or 0x4671b8.
+Inside 0x466df0 the current view's type is queried (`0x4645ac` = currentView->vt[8](), the view object comes from
+sub+0xD9B0 via 0x46459c) and compared against 9; not the gate we are after, but the type value is now readable.
+This is the first live code that provably drives the split cameras - every earlier lead (0x467a14, 0x475b44,
+0x481d48) was dead code. Next: continue the bisect (0x466f94 vs 0x4671b8), then read the switch inside 0x467008 /
+0x466df0 that picks the camera config, and find what restricts it to two.
+All experiment groups are in patch.yml and disabled.
+
+### 2026-09-21 - new cars instead of replacing the donor + AWD family + bonnet view attempts 16/17
+
+**Ported cars are their own cars now.** `specdb/build_reg.sh` learned `MOD_EXTRA_DIR=<dir>`: every file below that
+directory is copied into the pack tree, so converted models can ship under a NEW model code.
+`build/extra_02360002/` holds car/race/02360002 (the port_body output), car/hq, car/interior, car/info,
+wheel/race, wheel/hq (interior/info/wheels copied from the Roadster, hq = the ported race model for now - the real
+hq model could not be extracted: `GTToolsSharp unpack --indices` extracts 0 files from the installed PDIPFS).
+Overlay `full` = 9 cars: Tesla Roadster AWD, VW 1200 AWD, 6 Golf AWD variants and **Tesla Model S Signature
+Performance '12 as its own car (id 1896, model code 02360002)** - the Roadster is no longer replaced.
+Build: spec DB checks 0 problems, 88 files, 11 MB; the game boots, the car list shows the new cars and a race runs.
+Still to verify: selecting the Model S itself in game.
+
+**AWD family**: `specdb/gen_awd.py <label>...` generates an AWD clone description for any car (skips cars that are
+already 4WD), with free ids taken from the stock tables and the other descriptions. Generated: 6 Golf variants
+(golf_gti_05, _std, golf_gti_5dr_01, _rm, _std, golf_gti_76); golf_r32_3d_03, golf_r_10 and hpa_golf_r32_04 are
+factory 4WD and were skipped. Only one Tesla exists in GT5 (the Roadster, already done). Naming bug fixed: using
+both the long and the short name as replacement pairs produced "Golf V GTI '05 AWD AWD"; one pair is enough and
+"AWD" now goes in front of the year ("Golf V GTI AWD '05"). The Beetle's ids were moved (3520/3521, 8920/8921,
+11903) because the Model S description already used 3503/8903/11902.
+
+**Bonnet view attempts 16/17**: the camera-set bisect narrowed to **0x466f94** (nop it -> one of the two split
+views looks at the underbody, shots/cam_site2). The function 0x467008 contains a 4-way switch on
+`r11 = *(r30+0x34)` (cases 0..3 = four camera kinds, which matches the journal's "split only has index 3 and 0");
+forcing r11 = 1 (0x467088 `lwz` -> `li r11,1`, group in patch.yml) changes nothing visible, so that switch is not
+the selector either. Seventeen measured attempts; all experiment groups are disabled.
+
+### 2026-09-21 - bonnet view attempt 18 + shader transplant integrity checks
+
+**Bonnet view, attempt 18**: dumped the camera context in 1P and in split through the GDB stub
+(scratchpad/gdbcam.py, cam_1p.txt / cam_split.txt). The five counters at (table+4)+0x20..0x24 are `10 10 10 10 10`
+in 1P and `02 02 02 02 02` in split. Patched the VALUE at its source (the two struct copies 0x4901ec / 0x4913e4,
+`lbz src+0x27..0x2b` -> `li r0,16`, group in patch.yml): the split race still only alternates bumper <-> chase.
+So even with all five counters at 16 the two extra views do not appear - the counters are not the gate either.
+18 measured attempts; nothing further without SPU/PPU instruction tracing.
+
+**Shader transplant**: three targeted integrity checks of build/g5r_selftransplant.mdl against the stock file, all
+**pass**:
+* all 109 FP microcode blocks are byte-identical after the move,
+* every MaterialData colour-key pointer points into the NEW key pool (the pool move is complete, not only the
+  Material.keys pointers the code comments mention),
+* no pointer of Material (0x34), MaterialData (0x28) or the s14 array became NULL.
+So the PPU-side structures are consistent; the crash (`SPU: Compilation failed` / SPU read of 0x0 in the SPURS
+kernels) comes from data the SPU itself consumes. Finding it needs SPU-side debugging (RPCS3's SPU debugger or a
+logging patch), not more static comparison.
+Practical consequence: the usable path to GT6 cars today is conv/port_body.py (donor materials, correct geometry),
+not the transplant.
+
+### 2026-09-21 - bonnet view: the logging patch WORKS and finally produces data
+
+Built `gt6work/notes/scripts/make_camlog_patch.py` (trampolines in the RX cave at 0x1581200+, log buffer at
+0x1949000 in the mapped page behind the RW segment - the area the 4P mod already uses). Lessons:
+* a store with RA=0 is an ABSOLUTE address on PPC, so the buffer pointer must live in r11 and the counter must be
+  incremented in r12, never in r0 (two generator bugs, both found by disassembling the generated words);
+* the buffer address is writable (GDB canary 0xdeadbeef), the cave is executable (minimal canary stored 0x1234
+  from the per-frame model-draw call) - so caves added by RPCS3 patches do run;
+* simple 5-word "marker" trampolines (one store + tail branch) are the robust pattern.
+
+**Marker run (1P vs split, identical results)**: camera-set sites 0x466d84 and 0x466f94 fire, 0x4671b8 never fires,
+the apply calls inside 0x467488 never fire, but **the dispatcher call 0x4677e4 -> 0x467488 fires in both modes**;
+the model-draw canary confirms the patch was active.
+**Value ring on 0x4677e4** (16-entry ring at 0x1949100): in a split race with four SELECT presses the view numbers
+passed to 0x467488 are **0, 0, 0, 1, 1** - i.e. split really only ever asks for view 0 and view 1 (the old journal's
+"index 3 and 0" was wrong). That also explains attempt 11: forcing r4 = 1 there forced one of the two values that
+are used anyway, which is why nothing changed.
+**Forcing r4 = 2 and r4 = 3**: the camera jumps somewhere completely different (sky/mirror-ground, the car is not
+in frame) - so the view number does control the camera, but views 2/3 are never POSITIONED in split: the per-frame
+camera-set code only runs for the two active views.
+Next: log inside 0x466df0's guard chain (0x466eb4 / 0x466ec0 view type == 9 / 0x466ed8 / 0x466ee4 / 0x466ef8) to see
+which guard skips views 2/3 in split, then lift that guard.
+Ring in a 1P race for comparison: only **two** calls, both with view number **7** - so the numbers are ids in a
+larger space (not 0..3), and in 1P most SELECT presses do not go through the dispatcher path at all, while in split
+every press does (5 calls with 0/1). The split limitation therefore sits in whoever builds that request (the event
+object whose +0x20 holds the number, read at 0x4677d8), not in the apply function.
+Next concrete step: log the CALLER of the dispatcher (LR at 0x4677e4 is inside the dispatcher, so hook one level up)
+or log the event object's fields, to find who computes 0/1 in split and 7 in 1P.
+
+### 2026-09-22 - decoder: three opcodes added (59 -> 121 of 158), bonnet view attempts 19/20
+
+**Decoder**: `conv/geometry.py:758` now allows the render opcodes **8, 11 and 12** in the base path
+(backup geometry.py.bak-opcodes). They carry no geometry - the bit parser already consumes them exactly (op8 has no
+payload, op11 22 bits, op12 29 bits) and the triangle loop only reacts to 1/2/5/14, exactly as for the
+long-allowed 6/9/10; the `loaded == n_raw` assertion stays as the guard. Result of the survey rerun:
+**121 of 158 cars decode** (was 59), 14.9 M triangles in total; the remaining 37 fail on packed map2/tangent layout
+variants. Regression check: the Model S decodes to exactly the same 225 shapes / 122314 triangles as before.
+In game: `monster_sx4_pikespeak_11` (02470001, could NOT be decoded before) ported with conv/port_body.py onto the
+small donor 00570018 (main 0x172b80) renders correctly in a race (shots/t_sx4).
+
+**Bonnet view**: attempt 19 = ask for view 2 AND nop all five positioning guards of 0x466df0 (0x466eb4, 0x466ec4,
+0x466ed8, 0x466ee4, 0x466ef8) - unchanged broken camera. Attempt 20 = ask for view **7**, the number a 1P race
+requests from the same dispatcher - same broken camera. So views 2/3/7 all behave alike in split: the number is not
+backed by a view object there, and the code falls back to an uninitialised camera. The view NUMBER is a property of
+the view objects (vt+0x20); in split the objects carry 0/1, in 1P 7. Next: find where those numbers are assigned,
+i.e. where the camera set is configured per race mode.
+Note: scratchpad scripts are lost on reboot - split2_hsr.sh now lives in gt6work/.
+
+### 2026-09-22 - bonnet view: camera slots understood, but forcing them breaks the game -> stopping the feature
+
+Runtime dump of the split-screen camera context (logged with a cave trampoline at the call of 0x4664fc, the
+function that picks the CURRENT view out of the 16-slot array; context = 0x4232e000, slots at ctx+0xd970, current
+view at ctx+0xd9b0): all 16 slots hold DIFFERENT camera classes, e.g. slot 0 = CameraOnboard (vtable 0x16eadd0),
+slot 1 = a trackside camera, slot 11 = the one split actually uses. 0x4664fc chooses between the hard-wired
+indices 3 and 13 (0x466580 `li r4,3`, 0x466590 `li r4,0xd`).
+Forcing that index does change the camera in split - slot 0 gives a low forward onboard view, slot 1 a trackside
+view, slot 5 a wider one - **but the result is not usable**: Sebastian reports "das schaut nicht gut aus und fahren
+ist dann auch nimmer möglich"; forcing the index replaces the camera for every view of that player and the car can
+no longer be driven properly. The bonnet/cockpit images are SUB-views (mounts) of the onboard camera, not slots, so
+this lever is the wrong one anyway.
+=> ~24 measured attempts. Stopping the bonnet-view work here: every further probe changes global camera state and
+costs the user a broken game session. If it is ever picked up again, the entry point is the onboard camera's mount
+selection (ctx+0x174/+0x17c per the 09-06 journal, written by the parameter-block copies at 0x493c58/0x499270),
+and the tooling for it (cave trampolines + GDB dumps, gt6work/notes/scripts/make_camlog_patch.py) now works.
+All experiment groups in patch.yml are disabled; the deployed overlay is `awd_tuning` again.
+
+### 2026-09-22 - SPLIT-SCREEN VIEW SWITCH SOLVED (roof/over-the-bonnet camera works)
+
+Found by runtime diffing (cave logger + GDB dumps), not by reading:
+* The active window's camera context is the **CameraOnboard object itself** (window 0 = 0x422BE000, vtable
+  0x16eadd0); the four window contexts are 0x422BE000/0x4230E000/0x4231E000/0x4232E000 and only the active one
+  has `current-view == itself` (idx 0).
+* Its **sub-view index lives at ctx+0x3a20**. Measured in 1P: 0 = bumper, **1 = cockpit** (full interior with wheel
+  and dashboard), **3 = roof/over-the-bonnet**, 2 = chase. In split only 0 and 2 occur.
+* The index is computed at 0x4890f8 by the lookup 0x4814d0 from the **requested view id at ctx+0x36c** against the
+  16-entry table at 0x13BA3FC: id 0 -> idx 0, id 0x1a -> idx 1, id 6 -> idx 3, id 1 -> idx 2.
+* Forcing the INDEX alone does nothing visually; forcing the **ID** works. The id is written by the onboard
+  camera's setter 0x4852c8 (`stw r30, 0x36c(r31)` at 0x485340).
+
+**Working patch** (group "GT5: split onboard view 0 -> 6 (roof/over-the-bonnet)"): the store at 0x485340 is
+redirected to a cave at 0x1581900 that turns id 0 into id 6:
+`cmpwi cr7,r30,0 / bne skip / li r30,6 / skip: stw r30,0x36c(r31) / b 0x485344`.
+In game (shots/cam_swap): player 1 in a 2P split race now toggles between the **roof/over-the-bonnet camera** and
+chase instead of bumper and chase; the car drives normally.
+Limitation: the true cockpit view (id 0x1a) shows the underbody in split (shots/cam_swap1a) because `car/interior`
+is never loaded in a split race - that is the remaining piece for a real interior view. In the half-height split
+viewport the bonnet itself is below the visible area, so the roof camera reads as a high forward view.
+
+### 2026-09-22 - packaging question: can split-screen mod and cars coexist on the PS3?
+
+Verified with GTToolsSharp (build/chain_test): packing a second overlay with `-i <already modified PDIPFS>`
+produces a TOC that lists **both** sets - `car/race/02360002` and `specdb/.../GENERIC_CAR.dbt` from the first pack
+and `car/thumbnail_M/chaintest_00` from the second, 48385 entries in the listing. The output folder only contains
+the TOC (K/4D) plus the new files, so installing it on top keeps the earlier files.
+=> Two mods CAN coexist, but not as two independent packages in arbitrary order: PDIPFS has a single TOC, so the
+second package must be BUILT against the state the first one produces (chained), or both must be packed together
+(what build_reg.sh does today). The patched EBOOT.BIN is a separate file and independent of PDIPFS.
+
+### 2026-09-22 - BONNET VIEW IN SPLIT SCREEN WORKS (id 7)
+
+Walked the candidate camera ids in ONE run with a cave that hands out the next id from a table on every call of the
+onboard view setter (0x485340), then pinned the winner: **view id 7 = the bonnet camera**, which shows the front of
+the car inside the half-height split viewport (id 6, the roof camera, is cropped away; id 0x1a, the cockpit, shows
+the underbody because car/interior is not loaded in split).
+Final patch "GT5 split screen: bonnet view instead of the bumper view": the store at 0x485340 is redirected to a
+cave at 0x1581900:
+`cmpwi cr7,r30,0 / bne skip / li r30,7 / skip: stw r30,0x36c(r31) / b 0x485344`
+In game (shots/bonnet_final): both players race with the bonnet in frame, SELECT still toggles to the chase view
+per player, and the quadrant meter (speed/gear) stays visible - Sebastian's question about the tachometer answered:
+the meter is HUD, independent of the camera.
+Two ppcasm pitfalls hit again while writing the caves: `addi rX,r0,..` means literal 0 (use r11/r12 for counters),
+and the branch-back target must be computed from the LAST instruction's address.
+
+### 2026-09-22 - one combined release package built (not installed yet)
+
+`gt6work/release/gt5_split_cars_v1/` (44 MB): EBOOT.BIN (294 words = the 288 split-screen words of release/4p plus
+the 6 bonnet-camera words; built with tools/build_eboot.sh, round trip OK, NPDRM hashes verified),
+EBOOT_patched.elf, words.txt, SHA1SUMS, README.md and mod/pdipfs = the `full` overlay (scripts + spec DB +
+9 cars incl. the GT6 Model S).
+Pitfall: `release/4p/words.txt` has five columns (address, orig, new, two disassembly columns) while
+build_eboot.sh only accepts three - feeding it directly silently applies NOTHING but the other file's words
+("6 words applied"). Converted with `awk '{print $1,$2,$3}'` -> 294 words applied.
+Tested in RPCS3 by installing the new EBOOT into dev_hdd0 (backup: gt6work/build/EBOOT.BIN.rpcs3-backup, the
+pre-patched 4P one) with ALL patch.yml groups disabled: split race runs, both players have the bonnet view, meter
+visible, PPU hash is now PPU-ab75a53d2348725ceb3f1a9bfb251e7f6a6d055a.
+Not installed on the PS3 yet - that replaces the console's EBOOT and needs Sebastian's go.

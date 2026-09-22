@@ -1,15 +1,15 @@
-[>] PFS Version/Serial No: '425509359' (26.06.2014 21:02:39)
-[>] Table of Contents Entry Index: 59859
-[>] TOC Size: 0x000BBF26 bytes (0x001214B0 expanded)
+[>] PFS Version/Serial No: '811701091' (21.09.2026 16:31:31)
+[>] Table of Contents Entry Index: 59863
+[>] TOC Size: 0x000BC138 bytes (0x00121738 expanded)
 [>] Total Volume Size: 12,7GB
 [>] Title ID: 'GT5-UK-KALAHARI-37863889'
 [-] Reading table of contents.
-[!] Volume Patch Path Table of contents located at: /home/sebastian/gt5re/update/USRDIR/PDIPFS/9/TA/ND
-[-] TOC Entry is 59859 which is at 9/TA/ND - decrypting it
+[!] Volume Patch Path Table of contents located at: /home/sebastian/.config/rpcs3/dev_hdd0/game/BCES00569/USRDIR/PDIPFS/9/PQ/O3
+[-] TOC Entry is 59863 which is at 9/PQ/O3 - decrypting it
 [-] Decompressing TOC file..
 [>] File names tree offset: 0x000010EC
-[>] File extensions tree offset: 0x00029F20
-[>] Node tree offset: 0x0002A708
+[>] File extensions tree offset: 0x00029FF8
+[>] Node tree offset: 0x0002A7E0
 [>] Entry count: 1078.
 [-] Started packing process.
 [-] Indexing files from directory...
@@ -27,4 +27,6 @@
 [-] Saving Table of Contents -> 9/PQ/O3
 [-] Saving Main Volume Header -> K/4D
 [/] Done packing in 00:00:00.4787736.
+[-] Started unpacking process.
+[:] Extracted 0 files.
 Exiting.
