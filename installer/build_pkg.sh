@@ -26,7 +26,7 @@ VARIANT="${2:-4p}"
 SCETOOL="${SCETOOL:-$BASE/eboot/scetool/scetool}"
 PYTHON="${PYTHON:-python3}"
 
-case "$VARIANT" in 3p|4p) ;; *) echo "variant must be 3p or 4p" >&2; exit 1;; esac
+case "$VARIANT" in 3p|4p|full) ;; *) echo "variant must be 3p, 4p or full" >&2; exit 1;; esac   # full = split screen + bonnet camera + extra cars
 
 REL="$BASE/release/$VARIANT"
 WORK="$BASE/installer/build/$VARIANT"

@@ -9,7 +9,11 @@ DivWork and further containers placed at their quadrant; every window gets its o
 Each window also gets its own car meter: the native RaceDisplayFace fills the meter widgets it
 finds by name inside the container it was given, and those (Speedmeter, Tachometer, DigitalSpeed,
 Indicator) all live under Panel - so Panel is copied per window, scaled to 0.6 and placed inside
-the quadrant.  Set MOD_HUD_SPEED=0 to keep the car meter off, as in the first 4P build.
+the quadrant.  On an onboard camera (the bonnet view) the face hides Panel and shows the in-car
+readout instead (Parette::speed/Indicator/Tacho), so those are placed inside the quadrant as well -
+without that they stay at their 1P positions along the bottom of the screen, which puts windows 2
+and 3 off screen (that is why players 3 and 4 had no speed display).
+Set MOD_HUD_SPEED=0 to keep the car meter off, as in the first 4P build.
 Usage: patch_hud_quad.py <race project dir>
 """
 import os, sys
@@ -36,7 +40,13 @@ t = t.replace(anchor, '''    // --- 4P split patch: HUD positions inside one 960
         [MapClip,                10, 60],
         [InfoRight::TotalTime,   586, 16],
         [InfoRight::BestLap,     586, 108],
-        [Panel,                  100, 358]
+        [Panel,                  100, 358],
+        // the in-car readout: the face shows these three instead of Panel whenever the window sits on
+        // an onboard camera (bonnet view).  Same offsets as the stock 2-window layout, measured from
+        // the right edge of the window: 1546/1698 of 1920 -> 586/738 of a 960 wide quadrant.
+        [Parette::speed,         586, 308],
+        [Parette::Indicator,     738, 308],
+        [Parette::Tacho,         586, 414]
     ];
     static sQuadDivs = [];
 
@@ -60,8 +70,6 @@ branch = '''        else if (sWinN >= 3)
             Parette::Gas.visible = false;
             Parette::Tire.visible = false;
             Parette::Steer.visible = false;
-            Parette::Tacho.visible = false;
-            Parette::Indicator.visible = false;
             // the native race display face fills Panel (speedometer, rev counter, gear); one copy
             // per window, scaled down to 456x127 so it fits into a 960x540 quadrant
             Panel.visible = ''' + ('true' if SPEED else 'false') + ''';
@@ -117,7 +125,6 @@ branch = '''        else if (sWinN >= 3)
             RaceDisplayFace.begin(ORG, ROOT, 0, RaceRoot::Info);
             RaceDisplayFace.dispmode = OP.racedisplay_view_mode;
             RaceDisplayFace.carmeter_disp = ''' + ('true' if SPEED else 'false') + ''';
-            Parette.visible = false;
 
             for (var k = 1; k < sWinN; k++)
             {
@@ -126,7 +133,6 @@ branch = '''        else if (sWinN >= 3)
                 D.RaceDisplayFace.begin(ORG, D, k, RaceRoot::Info);
                 D.RaceDisplayFace.dispmode = OP.racedisplay_view_mode;
                 D.RaceDisplayFace.carmeter_disp = ''' + ('true' if SPEED else 'false') + ''';
-                D.Parette.visible = false;
             }
         }
 '''

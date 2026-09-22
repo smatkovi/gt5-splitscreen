@@ -1332,3 +1332,123 @@ Tested in RPCS3 by installing the new EBOOT into dev_hdd0 (backup: gt6work/build
 pre-patched 4P one) with ALL patch.yml groups disabled: split race runs, both players have the bonnet view, meter
 visible, PPU hash is now PPU-ab75a53d2348725ceb3f1a9bfb251e7f6a6d055a.
 Not installed on the PS3 yet - that replaces the console's EBOOT and needs Sebastian's go.
+
+### 2026-09-22 - published and installed
+
+* Public repo: `git@github.com:smatkovi/gt5-splitscreen` - the local repo had no remote and its history had
+  diverged from GitHub (same commits, different hashes), so the new commit was rebased onto origin/master; the two
+  conflicts (JOURNAL.md, log.txt) were append-only and resolved as a union. Pushed as a9bb935.
+* Private repo: `gt5-splitscreen-packages` - added **gt5-full-installer.pkg** (20.8 MB). Built with
+  `installer/build_pkg.sh update/USRDIR/EBOOT.BIN full` after teaching build_pkg.sh and installer/Makefile the new
+  variant `full` (APPID GT5SPLTF); release/full/ holds words.txt (294) and mod/pdipfs (90 files).
+* PS3 (192.168.1.6): uploaded the new EBOOT.BIN (9477216 B) and all 90 overlay files over FTP, every file size
+  verified. Backup + rollback: `gt6work/build/ps3_backup_0922_1409/` (EBOOT.BIN.before = the previous 4P EBOOT,
+  the 57 overlay files that existed before, files.txt, rollback.sh). The untouched 2.17 EBOOT is still on the
+  console as EBOOT.BIN.orig.
+
+### Interior view in split screen - feasibility
+
+The model paths are built by a switch on a "model kind" at 0x2d2fa8 ("/car/interior/%s" at 0x2d3034,
+"/car/race/%s", "/car/hq/%s", ...). The function has no direct callers anywhere in the segment (virtual dispatch),
+so the requesting side has to be found at runtime - the same cave-logging + GDB method that solved the camera.
+Evidence so far: a 1P race always opens car/interior/<code>, a split race never does. Cost if enabled: the interior
+model is ~1.3 MB per car (Roadster: 1363264 B), so +2.6 MB for two players and +5.2 MB for four, on top of the race
+models - against the measured per-car main-region budget this is a real risk on the PS3, less so in RPCS3.
+
+### 2026-09-22 (later) - why players 3 and 4 lost the tachometer: it is the bonnet view
+
+Sebastian on the console: "wo ist das tuning? was heisst power 90? und es haben nicht alle 4p das tachometer" -
+and the meter he means is the round one, "wo die drehzahl und die geschwindigkeit mit zeigern angezeigt wurden".
+
+**Reproduced in RPCS3** with exactly the shipped package (EBOOT sha1 a11b6c1f..., release/full/mod/pdipfs deployed
+over the emulator's PDIPFS - it still held the older `awd_all` pack, whose 63 paths are a subset of the full pack's
+90, so the deploy overwrites all of them). 4P on High Speed Ring, cars VW 1200 AWD / Takata Dome NSX / Golf V GTI
+AWD / Tesla Roadster AWD: only two meters on screen, both the compact in-car readout (speed digits + gear), sitting
+at the bottom of the *screen* instead of inside a quadrant. Holding accelerate on pad 1 moved the numbers in the
+bottom-left panel, pad 2 the bottom-right one, so those two panels belong to windows 0 and 1 - windows 2 and 3 have
+no meter at all. `doc/emu_4p_hsr_meter_2of4_2026-09-22.png`. Same picture in a 4P kart race, and unchanged after a
+race restart, so it is neither the car nor the stale-`sQuadDivs` idea.
+
+**Cause.** Not the HUD patch: `race.adc` in the shipped pack is byte-identical to the one the 4-meter shot of
+2026-09-18 was taken with. The difference is the bonnet camera. Control run: same build, same race, with the six
+bonnet words reverted at runtime (new patch.yml group "GT5 test: bonnet view OFF" under the current hash
+PPU-ab75a53d..., 6 words applied per the log) - **all four windows show the full round dials again**, speedometer
+and rev counter with needles, each in its own quadrant. `doc/emu_4p_dials_all4_nobonnet_2026-09-22.png`.
+So GT5 treats view id 7 as an in-car view: the native `MRaceDisplayFace` then draws the compact in-car meter
+instead of `Panel`, and places it itself, from a table that only knows the 1P and 2P window layouts - windows 2
+and 3 get nothing. The style is decided once, at `begin()`: switching a window to the chase camera during the race
+does not bring the dials back (`doc/…hsr3`), which also points at a possible fix - apply the bonnet view *after*
+the race display has been set up instead of at camera setup.
+
+Open choice for Sebastian: bonnet view (as shipped, meters only for players 1/2) or the dials in all four windows
+(drop the six words), or the delayed-switch experiment to get both.
+
+**Tuning.** It is in the split-screen car select, one row of eight grey chips right after the colour chips, per
+player; the preset name rides in the balloon tip while scrolling (`doc/emu_split_tuning_picker_2026-09-22.png`,
+`doc/emu_split_tuning_tip_power90_2026-09-22.png`). "Power 90" = power restrictor at 90 % (`restrictorPermill =
+900`), the ballast presets add kg. Labels live in `specdb/patch_arcade_split_tuning.py` (`TUNE_NAMES`).
+
+### 2026-09-22 (evening) - speed display in all four windows, and a real tuning menu
+
+**Speed display with the bonnet view (fixed).** The cause of "players 3 and 4 have no meter" was not a native
+limit: on an onboard camera the race display face hides `Panel` and shows the in-car readout instead
+(`Parette::speed`, `Parette::Indicator`, `Parette::Tacho`) - and the quadrant patch had those three only hidden,
+never *positioned*, so they stayed at their 1P coordinates (y 944 of 1080). For windows 2 and 3 that is 944 + 540
+= off screen, and for windows 0 and 1 it put them along the bottom edge of the screen instead of inside their
+quadrant. `patch_hud_quad.py` now places them like the stock 2-window layout does, measured from the right edge
+of the window (1546/1698 of 1920 -> 586/738 of a 960 wide quadrant), and no longer forces `Parette.visible` off.
+Result: speed, gear and rev bar in every one of the four windows, with the bonnet view on.
+Evidence `doc/emu_4p_bonnet_speed_all4_2026-09-22.png`.
+
+**Tuning menu (`patch_arcade_split_tuning.py` rewritten).** The preset row became a two-level menu: row 1 is the
+menu ("Fertig" plus one chip per entry, name and current value in the balloon tip), row 2 the values, then the
+menu returns - the finder is synchronous (`context.enterEventLoop()`), so a plain `while` loop does it.
+Entries are built per car:
+* settings - power limiter, ballast, ballast position, brake balance, plus ride height, spring rate, dampers,
+  stabilisers, camber, toe, downforce, final drive, LSD and the 4WD split, with the ranges the career UI reads
+  (`cp.getSettingInfoSuspension()`, `...Chassis()`, `...Wing()`, `...DriveTrain()`, `...Gear()`, `...LSD()`).
+* parts - turbo, supercharger, engine tuning, ECU, exhaust, catalyst, manifolds, air filter, weight reduction,
+  windows, chassis stiffening, gearbox, clutch, flywheel, propeller shaft, suspension, LSD, brake controller,
+  air restrictor, drivetrain, wing; offered per stage where `cp.isExistParts(type, stage)` says so and installed
+  with `cp.setParts` inside `beginPartsInfo`/`endPartsInfo` (the body of `SettingUtil::setParts`, inlined).
+
+Two failure modes on the way, both fixed: `isExistParts`/`getParts` crash (access violation, 0x2b0510 reading
+0x28) unless a **parts-info session** is open, and the setting infos need the session
+`SettingProject::TuningPopup.onInitialize` opens (`permanentlyBeginInfo` + `beginSetting`) - without it the
+script died and left a black screen. Every group is additionally wrapped in try/catch (Adhoc has it), so a car
+that does not answer for one of them shows fewer chips instead of killing the screen.
+`MOD_TUNE_LEVEL` (0 basic, 1 + parts, 2 = everything, default) exists for exactly that bisection.
+Verified in RPCS3 on the 4P kart race: menu opens, "Leistung: 100.0 Prozent" -> 21 value chips 50..100 %,
+"Endantrieb: 4.620" (so the info-based ranges work), "Fertig" closes it, race starts normally.
+Open: the parts chips have only been seen on a kart, which has almost none - still to look at on a Golf.
+
+Not installed on the PS3: `build/reg/full8_full-pdipfs` is the tested pack, the EBOOT is unchanged.
+
+### 2026-09-22 (night) - licence tests and challenges as split-screen events: the data is on our side
+
+Sebastian asked whether the driving school / the challenges could be played together in split screen.
+They are not hard-wired modes: `LicenseRoot.ad` reads `textdata/gt5/license/l%03d.xml`, runs it through
+`GameParameterUtil::parseXML` and hands it to `GameParameterUtil::executeEvent` - the whole event is **data in
+the volume**. Same for the challenges, `textdata/gt5/special_event/*.xml` (59 files) plus `special_event_data.xml`
+as the index. Every explicit entry carries a player number:
+
+    <entry><car label="rx8_types_07"/> ... <player_no value="0"/></entry>    <- player 1
+    <entry><car label="_120i_04"/>    ... <player_no value="-1"/></entry>    <- AI
+
+All 52 licence files have exactly one `player_no=0` and the rest `-1`; the AMG/Top Gear races have up to 16
+explicit entries, while the kart challenges use `<entry_generate>` (a generated grid, no per-entry player number).
+So a 3-player licence test is a two-line data change - no script rebuild at all.
+
+Prepared and packed (`build/reg/ev3p_full-pdipfs`, deployed in RPCS3 only): `license/l009.xml` (B-1, Fuji, 4
+entries) and `special_event/amg105.xml` (16 entries) with the second and third entry set to `player_no` 1 and 2.
+
+**Blocked for now:** GT mode cannot be opened in the emulator - in the main menu bar the cursor refuses to move
+onto the house icon, only "Arcade Mode" can be focused, so the profile in RPCS3 has no career. Next step is to
+copy the console's save (`/dev_hdd0/home/00000001/savedata/BCES00569-GAME`) into
+`~/.config/rpcs3/dev_hdd0/home/00000001/savedata/` over FTP while the PS3 is on; then the licence menu opens and
+the 3-player test can run. Nothing of this is on the console.
+
+**Installed on the PS3 at 19:32:49** (after Sebastian closed GT5): the four overlay files that changed -
+`9/OY/NF`, `9/PQ/O3`, `9/VU/I9` and the TOC `K/4D`, every size verified. That is the build with the in-car speed
+display in all four windows and the two-level tuning menu. The EBOOT is untouched;
+`installer/gt5-full-installer.pkg` was rebuilt at 19:24 to match.

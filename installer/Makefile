@@ -18,8 +18,12 @@ ifeq ($(VARIANT),4p)
 else ifeq ($(VARIANT),3p)
   APPID    := GT5SPLT3
   VARNAME  := 3P
+else ifeq ($(VARIANT),full)
+  # split screen + bonnet camera + the extra cars, one package (PDIPFS has a single TOC)
+  APPID    := GT5SPLTF
+  VARNAME  := FULL
 else
-  $(error VARIANT must be 3p or 4p)
+  $(error VARIANT must be 3p, 4p or full)
 endif
 
 TITLE     := GT5 $(VARNAME) Split Screen Installer
