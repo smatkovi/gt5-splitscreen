@@ -1493,3 +1493,34 @@ contains interior geometry (the Roadster's `car/race` has 12 `GTBE_INTERIOR_SHAR
 usable cockpit view may not need the 1.3 MB interior model at all - it needs the camera moved to the driver's
 seat. Next step: read the offset the working bonnet view (id 7) gets in 0x466df0 / 0x467008 and see whether that
 offset is a value we can write, instead of hunting the model loader at 0x2d2fa8.
+
+### 2026-10-01 (late) - donor survey: the container decides how much of a GT6 car arrives
+
+`gt6work/scratch/donor_survey.py` decodes all 291 stock race models and records main-region size, shape count
+and the groups (`build/donor_survey.json`). What limits a port is not the file size but **how much room is left
+in the main region** (the measured ceiling is 0x2e8980) plus **how many GTBE_BODY slots the donor has** - the
+porter can only replace existing shapes, never add them.
+
+    code      body shapes   main      room to the ceiling
+    00180004      102       0x13c080  1.75 MB     <- best of both
+    00570015       74       0x12dd80  1.81 MB
+    00040047       64       0x11ec00  1.88 MB
+    00570018       46       0x0de200  2.14 MB     (what the 121 batch ports used)
+    02360001       177      0x228980  0.75 MB     (Roadster - the Model S container today)
+
+Model S into 00180004: **102 of 102 body shapes replaced**, glass/light masks/shadow boxes ported, only 3 donor
+shapes hidden, main 0x29c180, file 2.98 MB - against 10 of 124 in the Roadster container. That is the donor to
+re-port the batch with. Not shipped yet: the build is made (`build/reg/tes18_full-pdipfs`) but I could not get a
+clean look at it in the emulator tonight (the car select kept drifting out of the split flow), and the rule is
+that only what was seen running goes to the console. The PS3 therefore keeps the verified `tesfix` build.
+
+**Camera offset (interior view).** 0x466df0 and 0x467008 only *decide* and then call the setter 0x464db0 with
+(context, window, 0, view-byte) - no coordinates anywhere in them, so the eye position is computed inside
+0x464db0 or below it. Next: disassemble 0x464db0 and look for where an onboard view gets its offset (the bonnet
+view id 7 gets a sensible one, the cockpit id 0x1a ends up at the car origin).
+
+**For the 121 cars** the remaining work is now clear: re-port all of them into 00180004 with the group-aware
+porter, then generate one spec DB description per car. `specdb/gen_model_s_desc.py` is already data driven - its
+only car-specific parts are the three constants at the top (`DONOR, NEW, GT6_CAR`), a `FIXED_IDS` table, the
+sound substitution and an assert on the model code; the id allocation has to become run-global so 121 cars do not
+collide. Rough size of the result: 273 MB of race models, 0.5-0.7 GB of overlay with hq/interior/wheels.
