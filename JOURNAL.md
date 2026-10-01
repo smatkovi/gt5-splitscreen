@@ -1524,3 +1524,21 @@ porter, then generate one spec DB description per car. `specdb/gen_model_s_desc.
 only car-specific parts are the three constants at the top (`DONOR, NEW, GT6_CAR`), a `FIXED_IDS` table, the
 sound substitution and an assert on the model code; the id allocation has to become run-global so 121 cars do not
 collide. Rough size of the result: 273 MB of race models, 0.5-0.7 GB of overlay with hq/interior/wheels.
+
+### 2026-10-01 (night) - the console never got the last two updates: wrong FTP path
+
+Sebastian: "es sind noch immer beide modelle gerendert beim tesla". It was not the model. Reading the files back
+off the console showed `PDIPFS/K/4D` = e4c965cf778f - the TOC of `mods/full-pdipfs`, the pack the **.pkg** installed
+on 22 September. Both later uploads had gone to `USRDIR/9/...` and `USRDIR/K/4D` instead of
+`USRDIR/PDIPFS/9/...`: the ad-hoc install scripts used `BASE=.../USRDIR` and appended the PDIPFS-relative path.
+Worse, the verification compared the uploaded file's size with the listing **of the same wrong directory**, so it
+printed "ok" twice. The console ran the 22 September overlay all along - no quadrant speed display, no new tuning
+menu, and the old Tesla with the donor's interior inside it.
+
+Fixed now: the six differing files (two Tesla models, arcade.adc, race.adc, spec DB, TOC) uploaded to
+`USRDIR/PDIPFS/...` and **verified by reading each file back and comparing SHA1**, not by size.
+`tools/push_overlay_ps3.sh` is that corrected uploader. The misplaced `USRDIR/9` and `USRDIR/K` are still on the
+console (~5 MB of files the game ignores) - deleting over FTP is blocked here, so they stay for now.
+
+Lesson for every future install: verify with a read-back hash, and remember that `tools/deploy_ps3_release.sh`
+(the proper tool) had the path right all along - the quick scripts did not.
