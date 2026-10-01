@@ -1452,3 +1452,44 @@ the 3-player test can run. Nothing of this is on the console.
 `9/OY/NF`, `9/PQ/O3`, `9/VU/I9` and the TOC `K/4D`, every size verified. That is the build with the in-car speed
 display in all four windows and the two-level tuning menu. The EBOOT is untouched;
 `installer/gt5-full-installer.pkg` was rebuilt at 19:24 to match.
+
+### 2026-10-01 - the ported Tesla rendered two cars: it was never only the body
+
+Sebastian: "beim tesla werden beide autos ineinander gerendert". The donor container has more than one shape
+group, and `conv/port_body.py` only ever touched `GTBE_BODY`. Reading the shipped `car/race/02360002` back shows
+what still rendered: 13 GT6 body shapes **plus the Roadster's own interior** (12 shapes, 13186 verts), its glass
+(11 `GTBE_SS_BODY`) and its shadow box (10 shapes, 5192 verts) - a complete second car inside the new one.
+
+`port_body.py` now works group by group (`VISIBLE_TAGS`, `_group()`): every donor group is paired with the GT6
+group of the same tag, leftovers are hidden, and a donor group the GT6 car has no counterpart for (its interior
+shapes carry no readable name in our decode) is hidden completely. The small groups go first, otherwise the body
+eats the whole budget and the car ends up without windows. New flags: `--body-only` (old behaviour) and
+`--hide-only <tags>`.
+
+Shipped build (`build/reg/tesfix_full-pdipfs`): donor = Roadster, `--budget 0x2d8000 --hide-only GTBE_SHADOW_BOX`
+-> 10 body shapes, 6 glass, 3 light masks, 1 SS shadow box replaced, interior + shadow box hidden,
+main `0x2e8980` (exactly the measured safe maximum for that slot), file 3.4 MB. In the emulator the car select
+shows a clean black sedan and a 2P race has the Model S in one window and the real Roadster in the other - no
+second car inside it any more. What is still visible: from the bonnet camera you look through the missing hood,
+because only 10 of 124 GT6 body shapes fit into the Roadster container.
+
+Tried and rejected: the same port into donor `00570018` (the container the 121 batch ports use) takes all 46 body
+shapes, but that car is a race car - its livery and roll cage come along and the Model S ends up striped with a
+cage inside. Donor choice is a trade-off between geometry room and the donor's own look.
+
+**The 121 ported cars fit, memory-wise.** `build/ports_report.json`: 121 of 121 ok, main region min 0xf8d00,
+median 0x196300, max 0x2d1100 - all below the 0x2e8980 that the Roadster slot tolerated, and each car is loaded
+on its own. Total 273 MB of race models; with hq/interior/info/wheels per car the overlay would be ~0.5-0.7 GB,
+and every car still needs its own spec DB description (the Model S generator `gen_model_s_desc.py` is data driven
+and could be generalised). They would also all have to be re-ported with the group-aware porter above.
+
+### 2026-10-01 - cockpit view in split: the camera has no eye offset
+
+With the bonnet cave's `li r30,7` changed to `li r30,0x1a` (patch group "GT5 split test: cockpit view"), a 2P race
+puts both cameras **under the car**: underbody, wheels from below, ground (`doc/emu_split_cockpit_id1a_underbody_2026-10-01.png`).
+So the cockpit view is reachable in split, it simply sits at the car's origin - the eye point that the interior
+model carries is never applied because `car/interior` is not loaded. Worth knowing: the stock race model already
+contains interior geometry (the Roadster's `car/race` has 12 `GTBE_INTERIOR_SHARE` shapes, 13186 verts), so a
+usable cockpit view may not need the 1.3 MB interior model at all - it needs the camera moved to the driver's
+seat. Next step: read the offset the working bonnet view (id 7) gets in 0x466df0 / 0x467008 and see whether that
+offset is a value we can write, instead of hunting the model loader at 0x2d2fa8.
