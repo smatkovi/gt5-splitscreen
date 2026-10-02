@@ -1542,3 +1542,38 @@ console (~5 MB of files the game ignores) - deleting over FTP is blocked here, s
 
 Lesson for every future install: verify with a read-back hash, and remember that `tools/deploy_ps3_release.sh`
 (the proper tool) had the path right all along - the quick scripts did not.
+
+### 2026-10-02 - material-ranked porting, two more camera ids, 3-player licence files on the console
+
+**Ported cars had the donor's materials in the wrong places.** Sebastian: "model s is mit artefakten vom
+spender" - red and orange patches on the body. Cause: `port_body.py` paired donor and GT6 shapes purely by
+vertex count, so a GT6 body panel could land in a donor shape whose material is a tail light. The porter now
+splits each group by material first (`by_material`), ranks the materials by total vertex count and pairs rank
+with rank: the biggest material of a car body is its paint, then trim, glass surrounds, lights. Model S into the
+Roadster container: 16 body shapes (was 10), 6 glass, 3 light masks, main 0x2e4a00. `--by-size` keeps the old
+behaviour.
+
+**Camera ids 8 and 5 tested** (one word each in the cave, `li r30,<id>`): id 8 is the **rear view** (the camera
+looks back over the boot, `doc/emu_split_view_id8_rearview_2026-10-02.png` - this is what Sebastian saw as "das
+auto fährt rückwärts"), id 5 is another outside position of the roof family. Neither is a cockpit.
+
+**Why the cockpit (id 26) cannot work yet - now measured, not guessed.** A cave extension wrote the camera
+context to 0x1949200; read back through the GDB stub during a split race, the per-view parameter blocks
+(ctx+0x3F0 + index*0x330) say it plainly:
+
+    cockpit (idx 1)  eye +0x30 = (-297.775, 0.068, -378.599)   = exactly the car origin, at road level
+    bonnet  (idx 6)  eye +0x30 = (-297.352, 1.379, -378.504)   = 1.31 m above it, 0.42 m forward
+    both             +0x40 car position, +0x50 (0, 1.575, -0.074), +0x60 (-3.715, 0, 0.037), +0x70 FOV 52.4 / 60
+
+The bonnet block is filled from +0xE0 to +0x140; in the cockpit block that whole region is zero. So the cockpit
+camera is not missing an offset, it is not driven at all - the data the interior model would deliver never
+arrives. The next step is the code that fills the bonnet block (cfg 6), not another view id.
+
+**GT mode still not reachable in the emulator.** Copying the console's career save into RPCS3 does not work: PS3
+saves are signed per console (PARAM.PFD), GT5 read it and died in `cellSaveDataAutoLoad2` (access violation at
+0x00a379d8). Emulator save restored from the backup.
+
+**Installed on the PS3** (hash-verified, `tools/push_overlay_ps3.sh`, pack `full3p`): the material-ranked Model S
+plus - at Sebastian's explicit request and **untested, there is no way to test them here** - the two event files
+with extra human players: `textdata/gt5/license/l009.xml` (B-1, entries 2 and 3 get `player_no` 1 and 2) and
+`textdata/gt5/special_event/amg105.xml`. Rollback = upload the six paths from `build/reg/tesfix_full-pdipfs`.
